@@ -27,6 +27,7 @@ VkDevice create_device(VkPhysicalDevice physical_device,
     VkDeviceQueueCreateInfo queue_create_info[4]{};
     uint32_t set[4];
     uint32_t count = 0;
+    float priorities = 1.f;
 
     // Set up queue create info
     if (indices.graphics != UINT32_MAX) {
@@ -34,7 +35,7 @@ VkDevice create_device(VkPhysicalDevice physical_device,
             VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         queue_create_info[count].queueFamilyIndex = indices.graphics;
         queue_create_info[count].queueCount = 1;
-        queue_create_info[count].pQueuePriorities = (float[]){1.0f};
+        queue_create_info[count].pQueuePriorities = &priorities;
         queue_create_info[count].flags = 0; // No flags
         queue_create_info[count].pNext = nullptr;
         set[count++] = indices.graphics; // Add graphics queue to the set
@@ -46,7 +47,7 @@ VkDevice create_device(VkPhysicalDevice physical_device,
                 VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
             queue_create_info[count].queueFamilyIndex = indices.compute;
             queue_create_info[count].queueCount = 1;
-            queue_create_info[count].pQueuePriorities = (float[]){1.0f};
+            queue_create_info[count].pQueuePriorities = &priorities;
             queue_create_info[count].flags = 0; // No flags
             queue_create_info[count].pNext = nullptr;
             set[count++] = indices.compute; // Add compute queue to the set
@@ -59,7 +60,7 @@ VkDevice create_device(VkPhysicalDevice physical_device,
                 VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
             queue_create_info[count].queueFamilyIndex = indices.transfer;
             queue_create_info[count].queueCount = 1;
-            queue_create_info[count].pQueuePriorities = (float[]){1.0f};
+            queue_create_info[count].pQueuePriorities = &priorities;
             queue_create_info[count].flags = 0; // No flags
             queue_create_info[count].pNext = nullptr;
             set[count++] = indices.transfer; // Add transfer queue to the set
@@ -72,7 +73,7 @@ VkDevice create_device(VkPhysicalDevice physical_device,
                 VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
             queue_create_info[count].queueFamilyIndex = indices.present;
             queue_create_info[count].queueCount = 1;
-            queue_create_info[count].pQueuePriorities = (float[]){1.0f};
+            queue_create_info[count].pQueuePriorities = &priorities;
             queue_create_info[count].flags = 0; // No flags
             queue_create_info[count].pNext = nullptr;
             set[count++] = indices.present; // Add present queue to the set

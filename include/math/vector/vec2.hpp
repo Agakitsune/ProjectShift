@@ -112,7 +112,7 @@ struct vec2 {
         return {x, y};
     }
 
-    constexpr float length() const {
+    float length() const {
         return sqrtf(x * x + y * y);
     }
 
@@ -120,7 +120,7 @@ struct vec2 {
         return x * x + y * y;
     }
 
-    constexpr vec2 normalize() const {
+    vec2 normalize() const {
         float len = length();
         if (len == 0.0f) {
             return {0.0f, 0.0f};

@@ -132,7 +132,7 @@ struct quaternion {
 
     constexpr quaternion conjugate() const { return {-x, -y, -z, w}; }
 
-    constexpr quaternion normalize() const {
+    quaternion normalize() const {
         float len = std::sqrt(x * x + y * y + z * z + w * w);
         if (len == 0.0f) {
             return {0.0f, 0.0f, 0.0f, 1.0f};
@@ -165,7 +165,7 @@ struct quaternion {
 
     constexpr quaternion operator+() const { return {x, y, z, w}; }
 
-    constexpr float length() const {
+    float length() const {
         return std::sqrt(x * x + y * y + z * z + w * w);
     }
 

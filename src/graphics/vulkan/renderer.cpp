@@ -129,16 +129,12 @@ void submit_draw(Renderer &renderer, VkQueue queue) {
     submit_info.signalSemaphoreCount = 1;
     submit_info.pSignalSemaphores =
         &renderer.render_finished_semaphores.data[renderer.current_frame];
-
     if (vkQueueSubmit(queue, 1, &submit_info,
                       renderer.in_flight_fences.data[renderer.current_frame]) !=
         VK_SUCCESS) {
         // Handle submission failure
         return;
     }
-
-    renderer.current_frame =
-        (renderer.current_frame + 1) % renderer.in_flight_count;
 }
 
 Result present_draw(Renderer &renderer, VkQueue queue, VkSwapchainKHR swapchain,
@@ -147,7 +143,7 @@ Result present_draw(Renderer &renderer, VkQueue queue, VkSwapchainKHR swapchain,
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     present_info.waitSemaphoreCount = 1;
     present_info.pWaitSemaphores =
-        &renderer.render_finished_semaphores.data[renderer.current_frame - 1];
+        &renderer.render_finished_semaphores.data[renderer.current_frame];
     present_info.swapchainCount = 1;
     present_info.pSwapchains = &swapchain;
     present_info.pImageIndices = &image_index;
@@ -161,6 +157,7 @@ Result present_draw(Renderer &renderer, VkQueue queue, VkSwapchainKHR swapchain,
         // Handle other errors
         return RESULT_FAILURE;
     }
-
+    renderer.current_frame =
+        (renderer.current_frame + 1) % renderer.in_flight_count;
     return RESULT_SUCCESS;
 }

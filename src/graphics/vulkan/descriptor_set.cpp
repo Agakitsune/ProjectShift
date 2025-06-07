@@ -120,7 +120,7 @@ VkDescriptorPool create_descriptor_pool(VkDevice device,
             std::cout << "Descriptor type: " << i << ", count: " << count[i]
                       << std::endl;
             pool_sizes[j].type = static_cast<VkDescriptorType>(i);
-            pool_sizes[j].descriptorCount = count[i] * multiplier;
+            pool_sizes[j].descriptorCount = count[i] * multiplier * max_sets;
             j++;
         }
     }
@@ -188,6 +188,9 @@ void update_descriptor_sets(VkDevice device,
         vk_writes[i].descriptorCount = update.writes.data[i].descriptorCount;
         vk_writes[i].descriptorType = update.writes.data[i].type;
 
+        vk_writes[i].pNext = nullptr; // No additional structure
+        vk_writes[i].dstSet = VK_NULL_HANDLE; // Will be set later for each set
+        vk_writes[i].pTexelBufferView = nullptr; // Not used in this case
         if (update.writes.data[i].type == VK_DESCRIPTOR_TYPE_SAMPLER ||
             update.writes.data[i].type ==
                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
@@ -202,7 +205,7 @@ void update_descriptor_sets(VkDevice device,
             vk_writes[i].pImageInfo = nullptr; // Not used for buffer types
         } else {
             vk_writes[i].pImageInfo = nullptr;  // Not used for other types
-            vk_writes[i].pBufferInfo = nullptr; // Not used for other types
+            vk_writes[i].pBufferInfo = nullptr; // Not used for other types           
         }
     }
 

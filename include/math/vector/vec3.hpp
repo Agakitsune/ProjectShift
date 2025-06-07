@@ -119,7 +119,7 @@ struct vec3 {
         return {x, y, z};
     }
 
-    constexpr float length() const {
+    float length() const {
         return sqrtf(x * x + y * y + z * z);
     }
 
@@ -127,7 +127,7 @@ struct vec3 {
         return x * x + y * y + z * z;
     }
 
-    constexpr vec3 normalize() const {
+    vec3 normalize() const {
         float len = length();
         if (len == 0.0f) {
             return {0.0f, 0.0f, 0.0f};

@@ -130,7 +130,7 @@ struct vec4 {
         return {x, y, z, w};
     }
 
-    constexpr float length() const {
+    float length() const {
         return std::sqrt(x * x + y * y + z * z + w * w);
     }
 
@@ -138,7 +138,7 @@ struct vec4 {
         return x * x + y * y + z * z + w * w;
     }
 
-    constexpr vec4 normalize() const {
+    vec4 normalize() const {
         float len = length();
         if (len == 0.0f) {
             return {0.0f, 0.0f, 0.0f, 0.0f};
