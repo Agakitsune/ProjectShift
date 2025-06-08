@@ -37,6 +37,11 @@
 #include "graphics/vulkan/render_pass.hpp"
 #include "graphics/vulkan/renderer.hpp"
 #include "graphics/vulkan/sync.hpp"
+#include "graphics/vulkan/framebuffer.hpp"
+
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan.h"
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -56,6 +61,13 @@ struct LineData {
     vec3 color;
     float size;
 };
+
+void check_imgui_vulkan(VkResult result) {
+    if (result != VK_SUCCESS) {
+        std::cerr << "ImGui Vulkan error: " << result << std::endl;
+        throw std::runtime_error("ImGui Vulkan initialization failed");
+    }
+}
 
 void framebuffer_resize_callback(GLFWwindow *window, int width, int height) {
     Context *ctx = static_cast<Context *>(glfwGetWindowUserPointer(window));
@@ -114,6 +126,7 @@ int main() {
 
     GLFWwindow *window =
         glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+
     glfwSetWindowUserPointer(window, &ctx);
     glfwSetFramebufferSizeCallback(window, framebuffer_resize_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
@@ -224,7 +237,7 @@ int main() {
         RenderPassInfo()
             .add_attachment(AttachmentDescription(
                 ATTACHMENT_TYPE_COLOR, base.swapchain.format.format,
-                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                 VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
             .add_attachment(AttachmentDescription(
                 ATTACHMENT_TYPE_DEPTH_STENCIL, base.depth_format,
@@ -245,6 +258,27 @@ int main() {
                 .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
                                  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                 .dependencyFlags = 0}));
+    
+    VkRenderPass imgui_render_pass = create_render_pass(
+            base.device,
+            RenderPassInfo()
+                .add_attachment(AttachmentDescription(
+                    ATTACHMENT_TYPE_COLOR, base.swapchain.format.format,
+                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                    .set_load_op(VK_ATTACHMENT_LOAD_OP_LOAD)
+                )
+                .add_subpass_description(
+                    SubpassDescription(VK_PIPELINE_BIND_POINT_GRAPHICS)
+                        .add_color_attachment(0))
+                .add_subpass_dependecy(VkSubpassDependency{
+                    .srcSubpass = VK_SUBPASS_EXTERNAL,
+                    .dstSubpass = 0,
+                    .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                    .srcAccessMask = 0,
+                    .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                    .dependencyFlags = 0}));
 
     DescriptorSetBinding bindings[] = {
         DescriptorSetBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
@@ -252,6 +286,35 @@ int main() {
         DescriptorSetBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                              VK_SHADER_STAGE_VERTEX_BIT, 1),
     };
+    // imgui descriptor pool
+    VkDescriptorPoolSize pool_sizes[] =
+    {
+        { VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+    };
+    VkDescriptorPoolCreateInfo pool_info{};
+    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_info.poolSizeCount = 11;
+    pool_info.pPoolSizes = pool_sizes;
+    pool_info.maxSets = 1; // Maximum number of descriptor sets that can
+                                 // be allocated from this pool
+    pool_info.flags =
+        VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    VkDescriptorPool imgui_descriptor_pool;
+    if (vkCreateDescriptorPool(base.device, &pool_info, nullptr,
+                               &imgui_descriptor_pool) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create descriptor pool for ImGui");
+    }
+
     VkDescriptorSetLayout descriptor_set_layout =
         create_descriptor_set_layout(base.device, bindings, 2);
     VkDescriptorPool descriptor_pool =
@@ -297,10 +360,28 @@ int main() {
 
     VkCommandPool command_pool =
         create_command_pool(base.device, base.physical_device.indices.graphics);
+    VkCommandPool imgui_command_pool =
+        create_command_pool(base.device, base.physical_device.indices.graphics);
     VkQueue graphics_queue =
         create_queue(base.device, base.physical_device.indices.graphics);
     VkQueue present_queue =
         create_queue(base.device, base.physical_device.indices.present);
+
+    VkCommandBuffer *imgui_command_buffers;
+    imgui_command_buffers = new VkCommandBuffer[base.swapchain.image_count];
+    for (uint32_t i = 0; i < base.swapchain.image_count; ++i) {
+        imgui_command_buffers[i] = create_command_buffer(
+            base.device, imgui_command_pool, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    }
+
+    VkFramebuffer *imgui_framebuffers =
+        new VkFramebuffer[base.swapchain.image_count];
+    for (uint32_t i = 0; i < base.swapchain.image_count; ++i) {
+        imgui_framebuffers[i] = create_framebuffer(base.device, FramebufferCreateInfo(imgui_render_pass, base.swapchain.extent.width,
+                                                                             base.swapchain.extent.height)
+                                                .add_attachment(base.swapchain_image_views[i])
+        );
+    }
 
     Renderer renderer;
     create_renderer(
@@ -313,6 +394,28 @@ int main() {
                                     .set_depth_image_view(depth_image_view)
                                     .set_extent(base.swapchain.extent))
             .set_command_pool(command_pool));
+    
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGuiIO &io = ImGui::GetIO();
+    ImGui_ImplGlfw_InitForVulkan(window, true);
+
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = base.instance;
+    init_info.PhysicalDevice = base.physical_device.device;
+    init_info.Device = base.device;
+    init_info.QueueFamily = base.physical_device.indices.graphics;
+    init_info.Queue = graphics_queue;
+    init_info.PipelineCache = VK_NULL_HANDLE;
+    init_info.DescriptorPool = imgui_descriptor_pool;
+    init_info.Allocator = nullptr;
+    init_info.MinImageCount = base.swapchain.image_count;
+    init_info.ImageCount = base.swapchain.image_count;
+    init_info.CheckVkResultFn = check_imgui_vulkan;
+    init_info.RenderPass = imgui_render_pass;
+    ImGui_ImplVulkan_Init(&init_info);
+
+    ImGui_ImplVulkan_CreateFontsTexture();
 
     uint32_t image_index = 0;
     while (!glfwWindowShouldClose(window)) {
@@ -364,8 +467,46 @@ int main() {
 
         end_command_buffer(
             renderer.command_buffers.data[renderer.current_frame]);
+        
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::ShowDemoWindow();
+        ImGui::Render();
 
-        submit_draw(renderer, graphics_queue);
+        ImDrawData* main_draw_data = ImGui::GetDrawData();
+        const bool main_is_minimized = (main_draw_data->DisplaySize.x <= 0.0f || main_draw_data->DisplaySize.y <= 0.0f);
+
+        begin_command_buffer(
+            imgui_command_buffers[image_index], 0);
+
+        begin_render_pass(
+            imgui_command_buffers[image_index],
+            RenderPassBeginInfo()
+                .set_render_pass(imgui_render_pass)
+                .set_framebuffer(imgui_framebuffers[image_index])
+                .set_extent(base.swapchain.extent)
+                .set_clear_flags(CLEAR_COLOR)
+                .set_clear_color(BLACK)
+        );
+
+        ImGui_ImplVulkan_RenderDrawData(
+            main_draw_data, imgui_command_buffers[image_index]);
+
+        end_render_pass(imgui_command_buffers[image_index]);
+        end_command_buffer(imgui_command_buffers[image_index]);
+
+        submit_command_buffer(graphics_queue,
+            SubmitInfo()
+            .add_command_buffer(renderer.command_buffers.data[renderer.current_frame])
+            .add_command_buffer(imgui_command_buffers[image_index])
+            .add_wait_semaphore(renderer.image_available_semaphores.data[renderer.current_frame],
+                                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+            .add_signal_semaphore(renderer.render_finished_semaphores.data[renderer.current_frame]),
+            renderer.in_flight_fences.data[renderer.current_frame]);
+
+        // submit_draw(renderer, graphics_queue);
+
         present_draw(renderer, present_queue, base.swapchain.swapchain,
                      image_index);
         renderer.current_frame = (renderer.current_frame + 1) % 2;

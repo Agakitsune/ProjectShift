@@ -14,10 +14,36 @@ AttachmentDescription::AttachmentDescription(AttachmentType type,
       storeOp(VK_ATTACHMENT_STORE_OP_STORE),
       stencilLoadOp(VK_ATTACHMENT_LOAD_OP_DONT_CARE),
       stencilStoreOp(VK_ATTACHMENT_STORE_OP_DONT_CARE),
-      initialLayout(VK_IMAGE_LAYOUT_UNDEFINED),
-      finalLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR), referenceLayout(reference),
+      initialLayout(initial_layout),
+      finalLayout(final_layout),
+      referenceLayout(reference),
       flags(0) // Default flags, can be set later
 {}
+
+AttachmentDescription &AttachmentDescription::set_samples(VkSampleCountFlagBits samples) {
+    this->samples = samples;
+    return *this;
+}
+
+AttachmentDescription &AttachmentDescription::set_load_op(VkAttachmentLoadOp load_op) {
+    this->loadOp = load_op;
+    return *this;
+}
+
+AttachmentDescription &AttachmentDescription::set_store_op(VkAttachmentStoreOp store_op) {
+    this->storeOp = store_op;
+    return *this;
+}
+
+AttachmentDescription &AttachmentDescription::set_stencil_load_op(VkAttachmentLoadOp load_op) {
+    this->stencilLoadOp = load_op;
+    return *this;
+}
+
+AttachmentDescription &AttachmentDescription::set_stencil_store_op(VkAttachmentStoreOp store_op) {
+    this->stencilStoreOp = store_op;
+    return *this;
+}
 
 SubpassDescription::SubpassDescription(VkPipelineBindPoint bind_point)
     : bindPoint(bind_point), inputAttachments(nullptr),

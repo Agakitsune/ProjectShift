@@ -29,6 +29,12 @@ struct AttachmentDescription {
     AttachmentDescription(AttachmentType type, VkFormat format,
                           VkImageLayout initialLayout,
                           VkImageLayout finalLayout, VkImageLayout reference);
+    
+    AttachmentDescription &set_samples(VkSampleCountFlagBits samples);
+    AttachmentDescription &set_load_op(VkAttachmentLoadOp load_op);
+    AttachmentDescription &set_store_op(VkAttachmentStoreOp store_op);
+    AttachmentDescription &set_stencil_load_op(VkAttachmentLoadOp load_op);
+    AttachmentDescription &set_stencil_store_op(VkAttachmentStoreOp store_op);
 };
 
 struct SubpassDescription {

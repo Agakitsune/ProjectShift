@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.30)
 
 project(project_shift)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD 99)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -31,7 +31,6 @@ set(OPTION_BUILD_EXAMPLES OFF)
 
 FetchContent_MakeAvailable(glfw3 imgui)
 
-# find_package(OpenGL REQUIRED)
 find_package(Vulkan REQUIRED)
 
 file(GLOB_RECURSE SOURCES
@@ -57,7 +56,7 @@ add_executable(${PROJECT_NAME}
     ${IMGUI_SOURCES}
 
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE ALCHEMIST_DEBUG)
