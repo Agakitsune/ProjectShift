@@ -36,9 +36,9 @@ struct DescriptorSetWrite {
 };
 
 struct UpdateDescriptorSets {
-    alchemist::vector<VkDescriptorSet>
+    std::vector<VkDescriptorSet>
         sets; // Using vector for dynamic size management
-    alchemist::vector<DescriptorSetWrite>
+    std::vector<DescriptorSetWrite>
         writes; // Using vector for dynamic size management
 
     UpdateDescriptorSets() = default;

@@ -10,13 +10,13 @@ struct Renderer {
     VkFramebuffer *framebuffers; // Array of swapchain framebuffers
 
     // In flight data
-    alchemist::vector<VkCommandBuffer>
+    std::vector<VkCommandBuffer>
         command_buffers; // Command buffers for each frame
-    alchemist::vector<VkSemaphore>
+    std::vector<VkSemaphore>
         image_available_semaphores; // Semaphores for image availability
-    alchemist::vector<VkSemaphore>
+    std::vector<VkSemaphore>
         render_finished_semaphores; // Semaphores for rendering completion
-    alchemist::vector<VkFence>
+    std::vector<VkFence>
         in_flight_fences; // Fences for synchronizing frame rendering
 
     uint32_t in_flight_count = 2; // Number of in-flight frames (default is 2)

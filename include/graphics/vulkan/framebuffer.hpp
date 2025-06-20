@@ -2,13 +2,13 @@
 #ifndef ALCHEMIST_GRAPHICS_VULKAN_FRAMEBUFFER_HPP
 #define ALCHEMIST_GRAPHICS_VULKAN_FRAMEBUFFER_HPP
 
-#include <vulkan/vulkan.h>
+#include <vector>
 
-#include "memory/vector.hpp"
+#include <vulkan/vulkan.h>
 
 struct FramebufferCreateInfo {
     VkRenderPass render_pass;
-    alchemist::vector<VkImageView> attachments;
+    std::vector<VkImageView> attachments;
     uint32_t width;
     uint32_t height;
     uint32_t layers = 1; // Default to 1 layer

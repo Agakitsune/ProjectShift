@@ -80,8 +80,8 @@ struct BindDescriptorSets {
 
     uint32_t first_set = 0; // First set index
 
-    alchemist::vector<VkDescriptorSet> sets; // Array of descriptor sets to bind
-    alchemist::vector<uint32_t>
+    std::vector<VkDescriptorSet> sets; // Array of descriptor sets to bind
+    std::vector<uint32_t>
         dynamic_offsets; // Dynamic offsets for the descriptor sets
 
     BindDescriptorSets() = default;

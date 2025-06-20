@@ -41,7 +41,10 @@ file(GLOB_RECURSE SOURCES
     "./src/math/vector/*.cpp"
 
     "./src/graphics/vulkan/*.cpp"
-    "./src/graphics/vulkan/khr*.cpp"
+    "./src/graphics/vulkan/khr/*.cpp"
+
+    "./src/graphics/meshes/*.cpp"
+    "./src/graphics/*.cpp"
     
     "./src/*.c"
 )
@@ -59,7 +62,14 @@ add_executable(${PROJECT_NAME}
     ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
 )
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE ALCHEMIST_DEBUG)
+# add compile option if cmake is run in debug mode
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "Building in Debug mode")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ALCHEMIST_DEBUG)
+else()
+    message(STATUS "Building in Release mode")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE ALCHEMIST_RELEASE)
+endif()
 
 target_compile_options(${PROJECT_NAME} PRIVATE
     -g

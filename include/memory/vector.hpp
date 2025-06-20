@@ -2,6 +2,14 @@
 #ifndef ALCHEMIST_MEMORY_VECTOR_HPP
 #define ALCHEMIST_MEMORY_VECTOR_HPP
 
+#ifdef ALCHEMIST_DEBUG
+#include <iostream> // for std::cerr, std::cout
+#endif // ALCHEMIST_DEBUG
+
+#include <cstdint> // for uint32_t
+#include <cstdlib>
+#include <utility> // for std::move
+
 namespace alchemist {
 template <typename T> struct vector {
     T *data = nullptr;
@@ -10,17 +18,20 @@ template <typename T> struct vector {
 
     vector() = default;
     vector(uint32_t initial_capacity) : size(0), capacity(initial_capacity) {
-        data = new T[capacity];
+        data = (T *)malloc(sizeof(T) * capacity);
+        for (uint32_t i = 0; i < capacity; ++i) {
+            new (&data[i]) T(); // Placement new to construct T in allocated memory
+        }
     }
     vector(uint32_t initial_capacity, const T &initial_value)
         : size(initial_capacity), capacity(initial_capacity) {
-        data = new T[capacity];
+        data =  (T *)malloc(sizeof(T) * capacity);
         for (uint32_t i = 0; i < capacity; ++i) {
             data[i] = initial_value;
         }
     }
     vector(const vector &other) : size(other.size), capacity(other.capacity) {
-        data = new T[capacity];
+        data = (T *)malloc(sizeof(T) * capacity);
         for (uint32_t i = 0; i < size; ++i) {
             data[i] = other.data[i];
         }
@@ -31,14 +42,19 @@ template <typename T> struct vector {
         other.size = 0;
         other.capacity = 0;
     }
-    ~vector() { delete[] data; }
+    ~vector() {
+        for (uint32_t i = 0; i < size; ++i) {
+            data[i].~T(); // Call destructor for each element
+        }
+        free(data);
+    }
 
     vector &operator=(const vector &other) {
         if (this != &other) {
-            delete[] data;
+            free(data);
             size = other.size;
             capacity = other.capacity;
-            data = new T[capacity];
+            data = (T *)malloc(sizeof(T) * capacity);
             for (uint32_t i = 0; i < size; ++i) {
                 data[i] = other.data[i];
             }
@@ -48,7 +64,13 @@ template <typename T> struct vector {
 
     vector &operator=(vector &&other) noexcept {
         if (this != &other) {
-            delete[] data;
+            std::cout << data << " " << other.data << std::endl;
+            if (data) {
+                for (uint32_t i = 0; i < size; ++i) {
+                    data[i].~T(); // Call destructor for each element
+                }
+                free(data);
+            }
             data = other.data;
             size = other.size;
             capacity = other.capacity;
@@ -62,26 +84,51 @@ template <typename T> struct vector {
     void push(const T &value) {
         if (size >= capacity) {
             capacity = capacity ? capacity << 1 : 1;
-            T *new_data = new T[capacity];
-            for (uint32_t i = 0; i < size; ++i) {
-                new_data[i] = data[i];
+            data = (T *)realloc(data, sizeof(T) * capacity);
+            for (uint32_t i = size; i < capacity; ++i) {
+                new (&data[i]) T(); // Placement new to construct T in allocated memory
             }
-            delete[] data;
-            data = new_data;
         }
-        data[size++] = value;
+        data[size] = value;
+        size++;
+    }
+
+    void push(T &&value) {
+        if (size >= capacity) {
+            capacity = capacity ? capacity << 1 : 1;
+            data = (T *)realloc(data, sizeof(T) * capacity);
+            for (uint32_t i = size; i < capacity; ++i) {
+                new (&data[i]) T(); // Placement new to construct T in allocated memory
+            }
+        }
+        data[size] = std::move(value);
+        size++;
     }
 
     void reserve(uint32_t new_capacity) {
         if (new_capacity > capacity) {
-            T *new_data = new T[new_capacity];
-            for (uint32_t i = 0; i < size; ++i) {
-                new_data[i] = data[i];
-            }
-            delete[] data;
-            data = new_data;
+            data = (T *)realloc(data, sizeof(T) * new_capacity);
             capacity = new_capacity;
+            for (uint32_t i = size; i < capacity; ++i) {
+                new (&data[i]) T(); // Placement new to construct T in allocated memory
+            }
         }
+    }
+
+    T &&pop() {
+        return std::move(data[--size]);
+    }
+
+    void remove(uint32_t index) {
+        data[index] = std::move(data[size - 1]);
+        size--;
+    }
+
+    void clear() {
+        for (uint32_t i = 0; i < size; ++i) {
+            data[i].~T(); // Call destructor for each element
+        }
+        size = 0;
     }
 };
 

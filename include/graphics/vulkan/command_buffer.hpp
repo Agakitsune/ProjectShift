@@ -8,8 +8,8 @@
 
 struct SubmitInfo {
     alchemist::dual_vector<VkSemaphore, VkPipelineStageFlags> wait_semaphores;
-    alchemist::vector<VkCommandBuffer> command_buffers;
-    alchemist::vector<VkSemaphore> signal_semaphores;
+    std::vector<VkCommandBuffer> command_buffers;
+    std::vector<VkSemaphore> signal_semaphores;
 
     SubmitInfo() = default;
     SubmitInfo(uint32_t wait_semaphore_count, uint32_t command_buffer_count,

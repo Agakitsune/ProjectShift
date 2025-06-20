@@ -10,7 +10,7 @@
 #include "memory/vector.hpp"
 
 struct PipelineLayoutInfo {
-    alchemist::vector<VkDescriptorSetLayout> setLayouts;
+    std::vector<VkDescriptorSetLayout> setLayouts;
 
     PipelineLayoutInfo() = default;
 
