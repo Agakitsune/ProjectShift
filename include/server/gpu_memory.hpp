@@ -6,10 +6,12 @@
 #include <iostream>
 #endif // ALCHEMIST_DEBUG
 
+#include <memory>
+
 #include <vulkan/vulkan.h>
 
 #include "memory/vector.hpp"
-#include "memory/rid.hpp"
+#include "server/rid.hpp"
 
 template <typename T>
 struct BindInterface {};
@@ -40,7 +42,7 @@ struct Bind {
 
     Bind() = default;
     ~Bind() {
-        get_rid_server().free(get_rid_atlas().BIND, rid); // Free the RID when the bind is destroyed
+        RIDServer::instance().free(RIDServer::BIND, rid); // Free the RID when the bind is destroyed
     }
 };
 
@@ -71,7 +73,7 @@ struct GpuDeviceMemory {
     RID rid = 0; // Resource ID for tracking
 
     ~GpuDeviceMemory() {
-        get_rid_server().free(get_rid_atlas().MEMORY, rid);
+        RIDServer::instance().free(RIDServer::MEMORY, rid); // Free the RID when the memory is destroyed
     }
 
     void allocate(VkDevice dev, VkDeviceSize capacity) {
@@ -141,7 +143,7 @@ struct GpuDeviceMemory {
         bind_info.data = data;
         bind_info.offset = size;
         bind_info.size = aligned_size;
-        bind_info.rid = new_id(get_rid_atlas().BIND); // Generate a new RID for the bind
+        bind_info.rid = RIDServer::instance().new_id(RIDServer::BIND); // Generate a new RID for the bind
 
         binds.emplace_back(std::move(bind_info)); // Add the bind to the vector
         BindInterface<T>::bind(dev, data, this->device, size);
@@ -257,7 +259,7 @@ struct GpuMemoryServer {
         block.type_idx = type_index;
         block.properties = flags;
         block.allocate(device, size);
-        block.rid = new_id(get_rid_atlas().MEMORY); // Generate a new RID for the block
+        block.rid = RIDServer::instance().new_id(RIDServer::MEMORY); // Generate a new RID for the memory block
         
         if constexpr (std::is_same_v<T, VkBuffer>) {
             buffers_memory.emplace_back(std::move(block)); // Move the block into the vector
@@ -402,11 +404,10 @@ struct GpuMemoryServer {
         }
         return RID_INVALID; // Return 0 if not found
     }
+
+    static GpuMemoryServer &instance();
+
+    static std::unique_ptr<GpuMemoryServer> __instance; // Singleton instance of GpuMemoryServer
 };
-
-GpuMemoryServer &new_gpu_memory_server(VkDevice device, VkPhysicalDevice physical_device);
-GpuMemoryServer &get_gpu_memory_server();
-
-extern GpuMemoryServer *gpu_memory_server;
 
 #endif // ALCHEMIST_MEMORY_GPU_HPP

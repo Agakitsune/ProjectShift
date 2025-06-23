@@ -46,11 +46,6 @@ struct RenderingDevice {
     
     VkDevice device;
 
-    VkQueue graphics_queue;
-    VkQueue compute_queue;
-    VkQueue transfer_queue;
-    VkQueue present_queue;
-
     VkFormat depth_format;
 
     VkSurfaceKHR surface;
@@ -64,6 +59,7 @@ struct RenderingDevice {
     VkImage *swapchain_images;
     VkImageView *swapchain_image_views;
 
+    RenderingDevice() = default;
     RenderingDevice(const ApplicationInfo &info);
     ~RenderingDevice();
 };

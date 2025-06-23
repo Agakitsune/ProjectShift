@@ -613,11 +613,6 @@ RenderingDevice::RenderingDevice(const ApplicationInfo &info) {
             break; // Found a suitable depth format
         }
     }
-
-    vkGetDeviceQueue(device, graphics_queue_family_index, 0, &graphics_queue);
-    vkGetDeviceQueue(device, present_queue_family_index, 0, &present_queue);
-    vkGetDeviceQueue(device, compute_queue_family_index, 0, &compute_queue);
-    vkGetDeviceQueue(device, transfer_queue_family_index, 0, &transfer_queue);
 }
 
 RenderingDevice::~RenderingDevice() {
@@ -631,6 +626,10 @@ RenderingDevice::~RenderingDevice() {
     vkDestroySwapchainKHR(device, swapchain, nullptr);
     vkDestroySurfaceKHR(instance, surface, nullptr);
 
+    // vkDestroyCommandPool(device, graphics_command_pool, nullptr);
+    // vkDestroyCommandPool(device, compute_command_pool, nullptr);
+    // vkDestroyCommandPool(device, transfer_command_pool, nullptr);
+
     vkDestroyDevice(device, nullptr);
     #ifdef ALCHEMIST_DEBUG
     auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
@@ -641,17 +640,3 @@ RenderingDevice::~RenderingDevice() {
     #endif
     vkDestroyInstance(instance, nullptr);
 }
-
-RenderingDevice &new_rendering_device(const ApplicationInfo &info) {
-    if (rendering_device != nullptr) {
-        delete rendering_device; // Clean up existing device
-    }
-    rendering_device = new RenderingDevice(info);
-    return *rendering_device;
-}
-
-RenderingDevice &get_rendering_device() {
-    return *rendering_device;
-}
-
-RenderingDevice *rendering_device = nullptr;

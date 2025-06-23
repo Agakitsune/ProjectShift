@@ -1,16 +1,40 @@
 
-#ifndef ALCHEMIST_GRAPHICS_RENDERING_PASS_HPP
-#define ALCHEMIST_GRAPHICS_RENDERING_PASS_HPP
-
-#ifdef ALCHEMIST_DEBUG
-#include <iostream>
-#endif // ALCHEMIST_DEBUG
-
-#include <vector>
+#ifndef ALCHEMIST_SERVER_RENDER_PASS_HPP
+#define ALCHEMIST_SERVER_RENDER_PASS_HPP
 
 #include <vulkan/vulkan.h>
 
-#include "graphics/rendering_device.hpp"
+#include "server/rid.hpp"
+#include "vulkan/command_buffer.hpp"
+#include "graphics/color.hpp"
+
+struct RenderPassBegin {
+    VkCommandBuffer cmd_buffer = VK_NULL_HANDLE; // Command buffer to begin the render pass on
+    VkRenderPassBeginInfo begin_info = {}; // Render pass begin info structure
+    std::vector<VkClearValue> clear_values; // Clear values for the attachments
+
+    RenderPassBegin() = default;
+    RenderPassBegin(VkCommandBuffer buffer);
+
+    RenderPassBegin &set_render_pass(RID pass);
+    RenderPassBegin &set_framebuffer(RID fb);
+    RenderPassBegin &set_render_offset(VkOffset2D area);
+    RenderPassBegin &set_render_size(VkExtent2D area);
+    RenderPassBegin &add_clear_color(const color &value);
+    RenderPassBegin &add_clear_depth(float value); 
+
+    void begin();
+    void end();
+};
+
+struct RenderPass {
+    VkRenderPass render_pass; // Vulkan render pass object
+    RID rid = RID_INVALID; // Resource ID for the render pass
+
+    RenderPass() = default;
+
+    RenderPassBegin begin(VkCommandBuffer cmd_buffer) const;
+};
 
 struct RenderingPassBuilder;
 
@@ -78,27 +102,56 @@ struct SubpassDependecyBuilder {
     RenderingPassBuilder &build() const;
 };
 
+struct RenderPassServer;
+
 struct RenderingPassBuilder {
     std::vector<VkAttachmentDescription> attachments;
     std::vector<VkSubpassDescription> subpasses;
     std::vector<VkSubpassDependency> dependencies;
 
-    RenderingPassBuilder() = default;
-    RenderingPassBuilder(uint32_t attachment_capacity, 
-                         uint32_t subpass_capacity = 1, 
-                         uint32_t dependency_capacity = 1);
+    RenderPassServer &server;
+
+    RenderingPassBuilder(RenderPassServer &server);
+    RenderingPassBuilder(RenderPassServer &server, 
+                         uint32_t attachment_capacity, 
+                         uint32_t subpass_capacity, 
+                         uint32_t dependency_capacity);
 
     AttachmentBuilder new_attachment();
     SubpassBuilder new_subpass();
     SubpassDependecyBuilder new_dependency();
 
-    VkRenderPass build(VkDevice device) const;
+    RID build() const;
 };
 
-VkRenderPass default_render_pass(const RenderingDevice &device);
+struct RenderPassServer {
+    std::vector<RenderPass> render_passes; // Vector to hold all buffers
+
+    VkDevice device; // Vulkan device
+
+    RenderPassServer(VkDevice device);
+    ~RenderPassServer();
+
+    RID new_render_pass(const VkRenderPassCreateInfo &create_info);
+    RID new_render_pass(VkRenderPassCreateInfo &&create_info);
+
+    RenderingPassBuilder new_render_pass();
+    RenderingPassBuilder new_render_pass(
+        uint32_t attachment_capacity, 
+        uint32_t subpass_capacity, 
+        uint32_t dependency_capacity);
+    
+    const RenderPass &get_render_pass(RID rid) const;
+
+    static RenderPassServer &instance();
+
+    static std::unique_ptr<RenderPassServer> __instance; // Singleton instance of BufferServer
+};
+
+RID default_render_pass(VkFormat image_format, VkFormat depth_format);
 
 #ifdef ALCHEMIST_DEBUG
-VkRenderPass imgui_render_pass(const RenderingDevice &device);
+RID imgui_render_pass(VkFormat image_format);
 #endif // ALCHEMIST_DEBUG
 
-#endif // ALCHEMIST_GRAPHICS_RENDERING_DEVICE_HPP
+#endif // ALCHEMIST_SERVER_RENDER_PASS_HPP
