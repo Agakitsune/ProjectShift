@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <stack>
+#include <set>
 
 #include <cstdint>
 #include <memory>
@@ -15,6 +16,7 @@ constexpr RID RID_INVALID = UINT64_MAX; // Invalid RID value, used to indicate a
 struct RIDServer {
     std::vector<RID> next;
     std::vector<std::stack<RID>> stack;
+    std::vector<std::set<RID>> in_stack; // Set to track used RIDs for each type
 
     RIDServer();
     ~RIDServer() = default;

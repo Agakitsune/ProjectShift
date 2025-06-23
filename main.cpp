@@ -67,21 +67,13 @@
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
-struct Context {
-    EditorCamera camera =
-        EditorCamera(vec3(1.0f, 1.0f, 1.0f), vec3(0.0f), 5.0f);
-
-    bool middle_mouse_pressed = false;
-    bool need_resize = false;
-};
-
-struct LineData {
-    quaternion orientation;
-    vec3 position;
-    float pad;
-    vec3 color;
-    float size;
-};
+// struct LineData {
+//     quaternion orientation;
+//     vec3 position;
+//     float pad;
+//     vec3 color;
+//     float size;
+// };
 
 void check_imgui_vulkan(VkResult result) {
     if (result != VK_SUCCESS) {
@@ -91,8 +83,8 @@ void check_imgui_vulkan(VkResult result) {
 }
 
 void framebuffer_resize_callback(GLFWwindow *window, int width, int height) {
-    Context *ctx = static_cast<Context *>(glfwGetWindowUserPointer(window));
-    ctx->need_resize = true;
+    Global &global = Global::instance();
+    global.need_resize = true;
 
     // Resize the swapchain or handle the resize event as needed
     // This is where you would typically recreate the swapchain with the new
@@ -103,22 +95,28 @@ void framebuffer_resize_callback(GLFWwindow *window, int width, int height) {
 
 void mouse_button_callback(GLFWwindow *window, int button, int action,
                            int mods) {
-    Context *ctx = static_cast<Context *>(glfwGetWindowUserPointer(window));
-    ctx->middle_mouse_pressed =
-        (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS);
+    Global &global = Global::instance();
+    global.middle_mouse_pressed = (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS);
 }
 
 void mouse_scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
-    Context *ctx = static_cast<Context *>(glfwGetWindowUserPointer(window));
-    ctx->camera.zoom(static_cast<float>(yoffset) * 0.1f);
+    Global &global = Global::instance();
+    global.camera.zoom(static_cast<float>(yoffset) * 0.1f);
 }
 
 void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
-    Context *ctx = static_cast<Context *>(glfwGetWindowUserPointer(window));
+    Global &global = Global::instance();
     static double last_x = xpos;
     static double last_y = ypos;
 
-    if (ctx->need_resize) {
+    if (!global.middle_mouse_pressed) {
+        // If middle mouse button is not pressed, just update last_x and last_y
+        last_x = xpos;
+        last_y = ypos;
+        return;
+    }
+
+    if (global.need_resize) {
         // Reset last_x and last_y if the window was resized
         last_x = xpos;
         last_y = ypos;
@@ -128,9 +126,9 @@ void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
     vec2 mouse_delta(static_cast<float>(xpos - last_x),
                      static_cast<float>(ypos - last_y));
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-        ctx->camera.pan(mouse_delta, 0.01f);
+        global.camera.pan(mouse_delta, 0.01f);
     } else {
-        ctx->camera.turn(mouse_delta, 0.01f);
+        global.camera.turn(mouse_delta, 0.01f);
     }
 
     last_x = xpos;
@@ -143,11 +141,8 @@ int main() {
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-    Context ctx;
-
     GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 
-    glfwSetWindowUserPointer(window, &ctx);
     glfwSetFramebufferSizeCallback(window, framebuffer_resize_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetScrollCallback(window, mouse_scroll_callback);

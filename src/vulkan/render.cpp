@@ -62,5 +62,5 @@ void bind_descriptor_sets(VkCommandBuffer cmd_buffer, RID pipeline_layout, RID d
         return; // Return without binding if the RID is invalid
     }
 
-    vkCmdBindDescriptorSets(cmd_buffer, bind_point, layout.layout, 0, 1, &set.descriptor_set, 1, offset); // Bind the descriptor sets to the command buffer
+    vkCmdBindDescriptorSets(cmd_buffer, bind_point, layout.layout, 0, 1, &set.descriptor_set, offset ? 1 : 0, offset); // Bind the descriptor sets to the command buffer
 }

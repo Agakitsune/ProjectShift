@@ -167,7 +167,7 @@ struct GpuDeviceMemory {
             return;
         }
         
-        if (vkMapMemory(dev, this->device, 0, size, 0, data) != VK_SUCCESS) {
+        if (vkMapMemory(dev, this->device, 0, capacity, 0, data) != VK_SUCCESS) {
             #ifdef ALCHEMIST_DEBUG
             std::cerr << "Failed to map GPU memory!" << std::endl;
             #endif
@@ -198,11 +198,15 @@ struct GpuDeviceMemory {
                 } else {
                     #ifdef ALCHEMIST_DEBUG
                     std::cerr << "Mapped GPU memory for bind with RID: " << rid << std::endl;
+                    std::cerr << *data << " at offset: " << bind.offset << " with size: " << bind.size << std::endl;
                     #endif
                 }
                 return; // Return if bind is found and mapped successfully
             }
         }
+        #ifdef ALCHEMIST_DEBUG
+        std::cerr << "Bind with RID " << rid << " not found for mapping!" << std::endl;
+        #endif
         *data = nullptr; // If bind not found, reset data pointer
     }
 
@@ -327,6 +331,25 @@ struct GpuMemoryServer {
             }
         }
         return 0; // Return 0 if not found
+    }
+
+    void map_bind(RID block, RID bind, void **data) const {
+        for (const auto &b : buffers_memory) {
+            if (b.rid == block) {
+                b.map_bind(device, bind, data); // Map the buffer memory block
+                return;
+            }
+        }
+        for (const auto &i : images_memory) {
+            if (i.rid == block) {
+                i.map_bind(device, bind, data); // Map the image memory block
+                return;
+            }
+        }
+        #ifdef ALCHEMIST_DEBUG
+        std::cerr << "Failed to map bind with RID: " << block << std::endl;
+        #endif
+        *data = nullptr; // Reset data pointer if not found
     }
 
     void map(RID rid, void **data) const {

@@ -7,10 +7,10 @@
 #include "server/buffer.hpp"
 
 Mesh::~Mesh() {
-    #ifdef ALCHEMIST_DEBUG
-    std::cout << "Destroying mesh with RID: " << rid << std::endl;
-    #endif
     if (rid != RID_INVALID) {
+        #ifdef ALCHEMIST_DEBUG
+        std::cout << "Destroying mesh with RID: " << rid << std::endl;
+        #endif
         RIDServer::instance().free(RIDServer::MESH, rid); // Free the RID of the mesh
     }
     if (buffer != RID_INVALID) {
@@ -18,7 +18,7 @@ Mesh::~Mesh() {
     }
 }
 
-void Mesh::bind(VkCommandBuffer cmd_buffer) {
+void Mesh::bind(VkCommandBuffer cmd_buffer) const {
     if (buffer == RID_INVALID) {
         #ifdef ALCHEMIST_DEBUG
         std::cerr << "Mesh with RID " << rid << " has no valid buffer!" << std::endl;
@@ -42,6 +42,7 @@ void Mesh::bind(VkCommandBuffer cmd_buffer) {
     VkDeviceSize *offsets_ptr = new VkDeviceSize[count]; // Create an array for offsets
     for (uint32_t i = 0; i < count; ++i) {
         offsets_ptr[i] = this->offsets[i]; // Fill the offsets array
+        std::cout << "Offset for buffer " << i << ": " << offsets_ptr[i] << std::endl; // Debug output for offsets
     }
 
     vkCmdBindVertexBuffers(cmd_buffer, 0, count, buffers, offsets_ptr); // Bind the vertex buffers
@@ -64,7 +65,8 @@ MeshBuilder::~MeshBuilder() {
 RID MeshBuilder::build() const {
     Mesh mesh;
 
-    mesh.rid = RIDServer::instance().new_id(RIDServer::MESH); // Create a new RID for the mesh
+    RID rid = RIDServer::instance().new_id(RIDServer::MESH); // Generate a new RID for the mesh
+    mesh.rid = rid; // Create a new RID for the mesh
     if (mesh.rid == RID_INVALID) {
         #ifdef ALCHEMIST_DEBUG
         std::cerr << "Failed to create mesh RID!" << std::endl;
@@ -77,9 +79,22 @@ RID MeshBuilder::build() const {
         .set_sharing_mode(VK_SHARING_MODE_EXCLUSIVE)
         .build(); // Create a new buffer for the mesh
     
-    server.meshes.emplace_back(std::move(mesh)); // Add the mesh to the server's meshes vector
+    BufferServer::instance().upload_buffer(mesh.buffer)
+        .upload_data(server.device, server.physical_device, size, data); // Upload the mesh data to the buffer
     
-    return mesh.rid; // If the buffer creation fails, it will return an invalid RID
+    mesh.offsets = std::move(offsets); // Move the offsets into the mesh
+    mesh.index_type = index_type; // Set the index type for the mesh
+    
+    server.meshes.emplace_back(std::move(mesh)); // Add the mesh to the server's meshes vector
+
+    #ifdef ALCHEMIST_DEBUG
+    std::cout << "Created mesh with RID: " << mesh.rid << ", buffer RID: " << mesh.buffer << std::endl;
+    #endif
+
+    mesh.rid = RID_INVALID;
+    mesh.buffer = RID_INVALID;
+    
+    return rid; // If the buffer creation fails, it will return an invalid RID
 } // Create the mesh and return its RID
 
 
@@ -116,6 +131,18 @@ void MeshServer::get_requirements(RID mesh, VkMemoryRequirements &requirements) 
     #ifdef ALCHEMIST_DEBUG
     std::cerr << "Mesh with RID " << mesh << " not found for memory requirements!" << std::endl;
     #endif
+}
+
+const Mesh &MeshServer::get_mesh(RID mesh) const {
+    for (const auto &m : meshes) {
+        if (m.rid == mesh) {
+            return m; // Return the mesh if found
+        }
+    }
+    #ifdef ALCHEMIST_DEBUG
+    std::cerr << "Mesh with RID " << mesh << " not found!" << std::endl;
+    #endif
+    return *((const Mesh *)nullptr); // Return a null pointer if not found
 }
 
 MeshServer &MeshServer::instance() {

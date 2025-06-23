@@ -90,7 +90,10 @@ void Global::init(const ApplicationInfo &info) {
         .set_aspect_mask(VK_IMAGE_ASPECT_DEPTH_BIT)
         .build();
     
-    desc_pool = DescriptorPoolServer::instance().new_descriptor_pool().add_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2).build();
+    desc_pool = DescriptorPoolServer::instance().new_descriptor_pool()
+        .add_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10)
+        .add_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10)
+        .build();
     auto builder = DescriptorLayoutServer::instance().new_descriptor_layout();
     builder.add_binding()
         .set_binding(0)
@@ -100,7 +103,7 @@ void Global::init(const ApplicationInfo &info) {
     builder.add_binding()
         .set_binding(1)
         .set_stage_flags(VK_SHADER_STAGE_VERTEX_BIT)
-        .set_descriptor_type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+        .set_descriptor_type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
         .set_descriptor_count(1);
     desc_layout = builder.build();
     desc = DescriptorServer::instance().new_descriptor(desc_pool, desc_layout);
@@ -117,9 +120,11 @@ void Global::init(const ApplicationInfo &info) {
     pipeline_builder.add_shader(frag, VK_SHADER_STAGE_FRAGMENT_BIT);
     pipeline_builder.set_vertex_input()
         .add_binding<vec3>(0)
+        .add_binding<vec3>(1)
         .add_attribute<vec3>(0, 0, 0)
+        .add_attribute<vec3>(1, 0, 0)
         .build();
-    pipeline_builder.set_input_assembly(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)
+    pipeline_builder.set_input_assembly(VK_PRIMITIVE_TOPOLOGY_LINE_LIST)
         .set_depth_stencil()
             .set_depth_test_enable(VK_TRUE)
             .set_depth_write_enable(VK_TRUE)

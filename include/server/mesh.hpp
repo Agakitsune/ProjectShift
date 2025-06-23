@@ -20,7 +20,7 @@ struct Mesh {
 
     ~Mesh();
 
-    void bind(VkCommandBuffer cmd_buffer);
+    void bind(VkCommandBuffer cmd_buffer) const;
 };
 
 struct MeshServer; // Forward declaration
@@ -51,7 +51,7 @@ struct MeshBuilder {
         this->data = realloc(this->data, this->size + size * sizeof(T)); // Allocate memory for the mesh data
         std::memcpy((uint8_t*)this->data + this->size, data, size * sizeof(T)); // Copy the data into the allocated memory
         offsets.push_back(this->size); // Add the current size as an offset
-        this->size += size; // Set the size of the mesh data
+        this->size += size * sizeof(T); // Set the size of the mesh data
         return *this; // Return the builder for chaining
     }
 
@@ -67,7 +67,7 @@ struct MeshBuilder {
         this->data = realloc(this->data, this->size + size * sizeof(T)); // Allocate memory for the mesh data
         std::memcpy((uint8_t*)this->data + this->size, data, size * sizeof(T)); // Copy the indices into the allocated memory
         offsets.push_back(this->size); // Add the current size as an offset
-        this->size += size; // Set the size of the mesh data
+        this->size += size * sizeof(T); // Set the size of the mesh data
         return *this; // Return the builder for chaining
     }
 
@@ -87,6 +87,8 @@ struct MeshServer {
     void bind_mesh(RID mesh, RID memory);
 
     void get_requirements(RID mesh, VkMemoryRequirements &requirements) const;
+
+    const Mesh &get_mesh(RID mesh) const;
 
     static MeshServer &instance();
 

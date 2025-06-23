@@ -9,6 +9,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include "editor/camera.hpp"
+
 #include "server/rid.hpp"
 #include "graphics/rendering_device.hpp"
 
@@ -16,6 +18,11 @@
 #include "vulkan/command_buffer.hpp"
 
 struct Global {
+    EditorCamera camera = EditorCamera(vec3(1.0f, 1.0f, 1.0f), vec3(0.0f), 5.0f);
+
+    bool middle_mouse_pressed = false;
+    bool need_resize = false;
+
     GLFWwindow *window = nullptr; // Pointer to the GLFW window
 
     RenderingDevice rendering_device; // Pointer to the rendering device

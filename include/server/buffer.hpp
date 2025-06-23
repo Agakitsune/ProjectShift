@@ -67,7 +67,7 @@ struct BufferServer {
 
     BufferBuilder new_buffer();
 
-    void bind_buffer(RID buffer, RID memory);
+    RID bind_buffer(RID buffer, RID memory);
     void bind_best(RID buffer, VkMemoryPropertyFlags flags);
 
     const Buffer &get_buffer(RID rid) const;

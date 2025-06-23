@@ -102,6 +102,10 @@ CmdUploadBuffer &CmdUploadBuffer::upload_data(VkDevice device, VkPhysicalDevice 
     );
     GpuMemoryServer::instance().bind(memory_rid, mem_requirements, staging);
     
+    copy_region = {};
+    copy_region.srcOffset = 0; // No offset for staging buffer
+    copy_region.dstOffset = 0; // No offset for destination buffer
+    copy_region.size = size; // Size of the data to copy
 
     // Copy data to the staging buffer
     void *mapped_data;
@@ -163,7 +167,7 @@ BufferBuilder BufferServer::new_buffer() {
     return BufferBuilder(*this); // Return a BufferBuilder instance for creating buffers
 }
 
-void BufferServer::bind_buffer(RID buffer, RID memory) {
+RID BufferServer::bind_buffer(RID buffer, RID memory) {
     VkMemoryRequirements mem_requirements;
 
     for (auto &buf : buffers) {
@@ -176,18 +180,19 @@ void BufferServer::bind_buffer(RID buffer, RID memory) {
                 #ifdef ALCHEMIST_DEBUG
                 std::cerr << "Failed to bind buffer memory for RID: " << buffer << std::endl;
                 #endif
-                return; // Return if binding fails
+                return bind_rid; // Return if binding fails
             }
             #ifdef ALCHEMIST_DEBUG
             std::cout << "Buffer with RID " << buffer << " bound to memory with RID " << memory << std::endl;
             #endif
 
-            return; // Exit after binding
+            return bind_rid; // Exit after binding
         }
     }
     #ifdef ALCHEMIST_DEBUG
     std::cerr << "Buffer with RID " << buffer << " not found for binding!" << std::endl;
     #endif
+    return RID_INVALID; // Return an invalid RID if the buffer is not found
 }
 
 void BufferServer::bind_best(RID buffer, VkMemoryPropertyFlags flags) {

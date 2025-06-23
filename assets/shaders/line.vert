@@ -1,6 +1,7 @@
 #version 450
 
 layout(location = 0) in vec3 position;
+layout(location = 1) in vec3 color;
 
 layout(location = 0) out vec3 fragColor;
 
@@ -12,7 +13,6 @@ layout(set = 0, binding = 0) uniform Matrix {
 layout(set = 0, binding = 1) uniform Data {
     vec4 quaternion;
     vec3 root;
-    vec3 color;
     float size;
 } data;
 
@@ -25,5 +25,5 @@ vec3 rotate(vec3 v, vec4 q) {
 void main() {
     vec3 pos = rotate(position, data.quaternion) * data.size + data.root;
     gl_Position = matrix.proj * matrix.view * vec4(pos, 1.0);
-    fragColor = data.color;
+    fragColor = color;
 }
