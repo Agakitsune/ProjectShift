@@ -43,7 +43,7 @@ void Global::init(const ApplicationInfo &info) {
 
     render_pass = default_render_pass(rendering_device.surface_format.format, rendering_device.depth_format);
     #ifdef ALCHEMIST_DEBUG
-    imgui_render_pass = imgui_render_pass(rendering_device.surface_format.format, rendering_device.depth_format);
+    gui_render_pass = imgui_render_pass(rendering_device.surface_format.format);
     #endif
 
     graphic_queue = QueueServer::instance().new_queue(

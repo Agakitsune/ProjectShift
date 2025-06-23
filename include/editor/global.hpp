@@ -28,7 +28,7 @@ struct Global {
     RID command_pool;
 
     RID render_pass;
-    RID imgui_render_pass;
+    RID gui_render_pass;
 
     RID pipeline_layout;
     RID pipeline;

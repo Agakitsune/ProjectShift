@@ -3,6 +3,7 @@
 
 #include "server/pipeline.hpp"
 #include "server/descriptor.hpp"
+#include <iostream>
 
 void bind_pipeline(VkCommandBuffer cmd_buffer, RID pipeline, VkPipelineBindPoint bind_point) {
     const PipelineServer &pipeline_server = PipelineServer::instance();
