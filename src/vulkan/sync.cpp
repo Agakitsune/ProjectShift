@@ -7,6 +7,9 @@
 
 Semaphore::~Semaphore() {
     if (semaphore != VK_NULL_HANDLE) {
+        #ifdef ALCHEMIST_DEBUG
+        std::cout << "Destroying semaphore: " << semaphore << " for device: " << device << std::endl;
+        #endif
         vkDestroySemaphore(device, semaphore, nullptr); // Destroy the semaphore
     }
 }
@@ -43,6 +46,9 @@ void Semaphore::signal() const {
 
 Fence::~Fence() {
     if (fence != VK_NULL_HANDLE) {
+        #ifdef ALCHEMIST_DEBUG
+        std::cout << "Destroying fence: " << fence << " for device: " << device << std::endl;
+        #endif
         vkDestroyFence(device, fence, nullptr); // Destroy the fence
     }
 }
@@ -80,6 +86,7 @@ uint32_t Fence::is_signaled() const {
 
 
 SemaphoreBuilder::SemaphoreBuilder(VkDevice device) : device(device) {
+    create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     create_info.pNext = nullptr;
     create_info.flags = 0; // Default flags, can be modified later if needed
@@ -91,20 +98,24 @@ Semaphore SemaphoreBuilder::build() const {
         #ifdef ALCHEMIST_DEBUG
         std::cerr << "Failed to create semaphore!" << std::endl;
         #endif
-        return Semaphore{VK_NULL_HANDLE, device}; // Return an invalid semaphore on failure
+        return Semaphore(VK_NULL_HANDLE, device); // Return an invalid semaphore on failure
     }
-    return Semaphore{semaphore, device}; // Return the created semaphore
+    Semaphore sem;
+    sem.semaphore = semaphore; // Assign the created semaphore
+    sem.device = device; // Assign the device associated with the semaphore
+    return std::move(sem); // Return the created semaphore
 }
 
 void SemaphoreBuilder::emplace(std::vector<Semaphore> &semaphores, uint32_t count) const {
     for (uint32_t i = 0; i < count; ++i) {
-        semaphores.emplace_back(build()); // Create and add semaphores to the vector
+        semaphores.emplace_back(std::move(build())); // Create and add semaphores to the vector
     }
 }
 
 
 
 FenceBuilder::FenceBuilder(VkDevice device) : device(device) {
+    create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     create_info.pNext = nullptr;
     create_info.flags = 0; // Default flags, can be modified later if needed
@@ -121,13 +132,16 @@ Fence FenceBuilder::build() const {
         #ifdef ALCHEMIST_DEBUG
         std::cerr << "Failed to create fence!" << std::endl;
         #endif
-        return Fence{VK_NULL_HANDLE, device}; // Return an invalid fence on failure
+        return Fence(VK_NULL_HANDLE, device); // Return an invalid fence on failure
     }
-    return Fence{fence, device}; // Return the created fence
+    Fence f;
+    f.fence = fence; // Assign the created fence
+    f.device = device; // Assign the device associated with the fence
+    return std::move(f); // Return the created fence
 }
 
 void FenceBuilder::emplace(std::vector<Fence> &fences, uint32_t count) const {
     for (uint32_t i = 0; i < count; ++i) {
-        fences.emplace_back(build()); // Create and add fences to the vector
+        fences.emplace_back(std::move(build())); // Create and add fences to the vector
     }
 }

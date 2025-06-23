@@ -12,7 +12,6 @@
 struct SceneManager {
     std::unordered_map<std::string, std::unique_ptr<Scene>> scenes;
 
-    uint32_t flight_frame = 0;
     Scene *current_scene = nullptr;
     std::unique_ptr<Transition> current_transition = nullptr;
 
@@ -73,10 +72,10 @@ struct SceneManager {
         }
     }
 
-    void render(VkCommandBuffer command_buffer) {
+    void render() {
         Global &global = Global::instance();
 
-        global.fences[flight_frame].wait();
+        global.fences[global.flight_frame].wait();
 
         const Queue &graphic_queue = QueueServer::instance().get_queue(global.graphic_queue);
         const Queue &present_queue = QueueServer::instance().get_queue(global.present_queue);
@@ -86,44 +85,46 @@ struct SceneManager {
             global.rendering_device.device,
             global.rendering_device.swapchain,
             UINT64_MAX,
-            global.image_semaphores[flight_frame].semaphore,
+            global.image_semaphores[global.flight_frame].semaphore,
             VK_NULL_HANDLE,
             &image_index
         );
 
-        global.fences[flight_frame].reset(); // Reset the fence for the current frame
-        global.command_buffers[flight_frame].reset(); // Reset the command buffer for the current frame
+        global.fences[global.flight_frame].reset(); // Reset the fence for the current frame
+        global.command_buffers[global.flight_frame].reset(); // Reset the command buffer for the current frame
 
-        global.command_buffers[flight_frame].begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+        global.command_buffers[global.flight_frame].begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
         if (current_scene) {
-            current_scene->render(command_buffer); // Render the current scene
+            current_scene->render(global.command_buffers[global.flight_frame].buffer, image_index); // Render the current scene
         }
         if (current_transition) {
-            current_transition->render(command_buffer); // Render the current transition
+            current_transition->render(global.command_buffers[global.flight_frame].buffer); // Render the current transition
         }
 
-        global.command_buffers[flight_frame].end(); // End the command buffer recording
+        global.command_buffers[global.flight_frame].end(); // End the command buffer recording
 
         graphic_queue.submit()
-            .add_command_buffer(global.command_buffers[flight_frame])
-            .add_wait_semaphore(global.image_semaphores[flight_frame].semaphore)
-            .add_signal_semaphore(global.render_semaphores[flight_frame].semaphore)
-            .submit(global.fences[flight_frame].fence);
+            .add_command_buffer(global.command_buffers[global.flight_frame])
+            .add_wait_semaphore(global.image_semaphores[global.flight_frame].semaphore, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
+            .add_signal_semaphore(global.render_semaphores[global.flight_frame].semaphore)
+            .submit(global.fences[global.flight_frame].fence);
         
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &global.render_semaphores[flight_frame].semaphore;
+        presentInfo.pWaitSemaphores = &global.render_semaphores[global.flight_frame].semaphore;
 
-        VkSwapchainKHR swapChains[] = {rendering_device->swapchain};
+        VkSwapchainKHR swapChains[] = {global.rendering_device.swapchain};
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
 
         presentInfo.pImageIndices = &image_index;
 
         result = vkQueuePresentKHR(present_queue.queue, &presentInfo);
+
+        global.flight_frame = (global.flight_frame + 1) & 1; // Cycle to the next frame
     }
 
     void imgui() {

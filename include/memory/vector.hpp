@@ -64,7 +64,6 @@ template <typename T> struct vector {
 
     vector &operator=(vector &&other) noexcept {
         if (this != &other) {
-            std::cout << data << " " << other.data << std::endl;
             if (data) {
                 for (uint32_t i = 0; i < size; ++i) {
                     data[i].~T(); // Call destructor for each element

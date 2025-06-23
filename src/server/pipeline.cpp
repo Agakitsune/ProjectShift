@@ -820,7 +820,7 @@ Pipeline &PipelineServer::get_pipeline(RID rid) {
         #ifdef ALCHEMIST_DEBUG
         std::cerr << "Invalid RID for pipeline!" << std::endl;
         #endif
-        throw std::runtime_error("Invalid RID for pipeline"); // Throw an error if the RID is invalid
+        return *pipelines.end();
     }
 
     for (auto &pipeline : pipelines) {
@@ -832,7 +832,7 @@ Pipeline &PipelineServer::get_pipeline(RID rid) {
     #ifdef ALCHEMIST_DEBUG
     std::cerr << "Pipeline with RID " << rid << " not found!" << std::endl;
     #endif
-    throw std::runtime_error("Pipeline not found"); // Throw an error if the pipeline is not found
+    return *pipelines.end();
 }
 
 
@@ -841,7 +841,7 @@ const Pipeline &PipelineServer::get_pipeline(RID rid) const {
         #ifdef ALCHEMIST_DEBUG
         std::cerr << "Invalid RID for pipeline!" << std::endl;
         #endif
-        throw std::runtime_error("Invalid RID for pipeline"); // Throw an error if the RID is invalid
+        return *pipelines.cend();
     }
 
     for (const auto &pipeline : pipelines) {
@@ -853,7 +853,7 @@ const Pipeline &PipelineServer::get_pipeline(RID rid) const {
     #ifdef ALCHEMIST_DEBUG
     std::cerr << "Pipeline with RID " << rid << " not found!" << std::endl;
     #endif
-    throw std::runtime_error("Pipeline not found"); // Throw an error if the pipeline is not found
+    return *pipelines.cend();
 }
 
 PipelineServer &PipelineServer::instance() {

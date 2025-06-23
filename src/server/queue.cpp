@@ -37,8 +37,9 @@ SubmitBuilder &SubmitBuilder::add_command_buffer(const CommandBuffer &buffer) {
     return *this; // Return the builder for method chaining
 }
 
-SubmitBuilder &SubmitBuilder::add_wait_semaphore(VkSemaphore semaphore) {
+SubmitBuilder &SubmitBuilder::add_wait_semaphore(VkSemaphore semaphore, VkPipelineStageFlags stage) {
     wait_semaphores.push_back(semaphore); // Add the Vulkan semaphore handle to
+    wait_stages.push_back(stage); // Add the corresponding pipeline stage flag to the vector
     return *this; // Return the builder for method chaining
 }
 
@@ -56,6 +57,7 @@ Submit SubmitBuilder::submit(VkFence fence) {
     if (!wait_semaphores.empty()) {
         submit_info.waitSemaphoreCount = static_cast<uint32_t>(wait_semaphores.size());
         submit_info.pWaitSemaphores = wait_semaphores.data(); // Pointer to the wait semaphores
+        submit_info.pWaitDstStageMask = wait_stages.data(); // Pointer to the wait stages
     }
 
     if (!signal_semaphores.empty()) {
@@ -67,6 +69,7 @@ Submit SubmitBuilder::submit(VkFence fence) {
     submit.command_buffers.swap(command_buffers); // Transfer ownership of command buffers to the Submit object
     submit.wait_semaphores.swap(wait_semaphores); // Transfer ownership of wait semap
     submit.signal_semaphores.swap(signal_semaphores); // Transfer ownership of signal semaphores
+    submit.wait_stages.swap(wait_stages); // Transfer ownership of wait stages
 
     // Submit the command buffers to the queue
     if (vkQueueSubmit(queue, 1, &submit_info, fence) != VK_SUCCESS) {
@@ -83,6 +86,14 @@ Submit SubmitBuilder::submit(VkFence fence) {
 
 SubmitBuilder Queue::submit() const {
     return SubmitBuilder(queue); // Return a SubmitBuilder initialized with the queue
+}
+
+void Queue::wait() const {
+    if (vkQueueWaitIdle(queue) != VK_SUCCESS) {
+        #ifdef ALCHEMIST_DEBUG
+        std::cerr << "Failed to wait for queue!" << std::endl;
+        #endif
+    }
 }
 
 

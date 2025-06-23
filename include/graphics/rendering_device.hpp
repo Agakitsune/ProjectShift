@@ -44,7 +44,7 @@ struct RenderingDevice {
     uint32_t transfer_queue_family_index;
     uint32_t present_queue_family_index;
     
-    VkDevice device;
+    VkDevice device = VK_NULL_HANDLE; // Vulkan logical device handle
 
     VkFormat depth_format;
 
@@ -61,12 +61,16 @@ struct RenderingDevice {
 
     RenderingDevice() = default;
     RenderingDevice(const ApplicationInfo &info);
+    RenderingDevice(RenderingDevice &&other);
+
+    RenderingDevice &operator=(RenderingDevice &&other);
+
     ~RenderingDevice();
 };
 
-RenderingDevice &new_rendering_device(const ApplicationInfo &info);
-RenderingDevice &get_rendering_device();
+// RenderingDevice &new_rendering_device(const ApplicationInfo &info);
+// RenderingDevice &get_rendering_device();
 
-extern RenderingDevice *rendering_device;
+// extern RenderingDevice *rendering_device;
 
 #endif // ALCHEMIST_GRAPHICS_RENDERING_DEVICE_HPP

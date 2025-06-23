@@ -11,7 +11,14 @@ struct Semaphore {
     VkDevice device = VK_NULL_HANDLE; // Vulkan device associated with the semaphore
 
     ~Semaphore();
-
+    Semaphore() = default;
+    Semaphore(VkSemaphore semaphore, VkDevice device)
+        : semaphore(semaphore), device(device) {}
+    Semaphore(Semaphore &&other) noexcept
+        : semaphore(other.semaphore), device(other.device) {
+        other.semaphore = VK_NULL_HANDLE; // Transfer ownership
+        other.device = VK_NULL_HANDLE;
+    }
 
     void wait(uint64_t timeout = UINT64_MAX) const;
     void signal() const;
@@ -22,6 +29,14 @@ struct Fence {
     VkDevice device = VK_NULL_HANDLE; // Vulkan device associated with the fence
 
     ~Fence();
+    Fence() = default;
+    Fence(VkFence fence, VkDevice device)
+        : fence(fence), device(device) {}
+    Fence(Fence &&other) noexcept
+        : fence(other.fence), device(other.device) {
+        other.fence = VK_NULL_HANDLE; // Transfer ownership
+        other.device = VK_NULL_HANDLE;
+    }
 
     void reset() const;
     void wait(uint64_t timeout = UINT64_MAX) const;

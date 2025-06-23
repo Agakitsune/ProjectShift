@@ -7,8 +7,12 @@
 
 #include "server/render_pass.hpp"
 
+#include "vulkan/render.hpp"
+
 struct DefaultScene : public Scene {
     DefaultScene() = default;
+
+    virtual ~DefaultScene() override = default;
 
     RenderPassBegin render_pass_begin;
 
@@ -25,21 +29,33 @@ struct DefaultScene : public Scene {
         // Update logic for the default scene
     }
 
-    void render(VkCommandBuffer command_buffer) override {
+    void render(VkCommandBuffer command_buffer, uint32_t image_index) override {
         Global &global = Global::instance();
 
-        if (render_pass_begin.cmd_buffer == VK_NULL_HANDLE) {
-            const RenderPass &pass = RenderPassServer::instance().get_render_pass(global.render_pass);
+        const RenderPass &pass = RenderPassServer::instance().get_render_pass(global.render_pass);
 
-            render_pass_begin = pass.begin(command_buffer);
+        render_pass_begin = pass.begin(command_buffer);
 
-            render_pass_begin
-                .set_framebuffer(global.render_pass)
-                .set_render_offset({0, 0})
-                .set_render_size(global.rendering_device.swapchain_extent)
-                .add_clear_color({0.0f, 0.0f, 0.0f, 1.0f}) // Clear color
-                .add_clear_depth(1.0f); // Clear depth value
-        }
+        render_pass_begin
+            .set_framebuffer(global.framebuffer[image_index])
+            .set_render_offset({0, 0})
+            .set_render_size(global.rendering_device.swapchain_extent)
+            .add_clear_color(BLACK) // Clear color
+            .add_clear_depth(1.0f); // Clear depth value
+
+        render_pass_begin.begin(); // Begin the render pass
+
+        bind_pipeline(command_buffer, global.gizmo_pipeline); // Bind the graphics pipeline
+
+        VkRect2D scissor_rect = {
+            {0, 0}, // Offset
+            global.rendering_device.swapchain_extent // Extent
+        };
+
+        viewport(command_buffer, global.rendering_device.swapchain_extent); // Set the viewport
+        scissor(command_buffer, scissor_rect); // Set the scissor rectangle
+
+        render_pass_begin.end(); // End the render pass
     }
 
     void imgui() override {

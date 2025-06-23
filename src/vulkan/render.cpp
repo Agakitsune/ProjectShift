@@ -15,6 +15,10 @@ void bind_pipeline(VkCommandBuffer cmd_buffer, RID pipeline, VkPipelineBindPoint
         return; // Return without binding if the RID is invalid
     }
 
+    #ifdef ALCHEMIST_DEBUG
+    std::cout << "Binding pipeline with RID: " << pipeline << " to command buffer: " << cmd_buffer << std::endl;
+    #endif
+
     vkCmdBindPipeline(cmd_buffer, bind_point, pipe.pipeline); // Bind the pipeline to the command buffer
 }
 

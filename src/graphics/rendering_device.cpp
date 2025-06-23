@@ -338,12 +338,6 @@ int query_swapchain_support(VkPhysicalDevice device, VkSurfaceKHR surface) {
 
 void create_swapchain(RenderingDevice &device, GLFWwindow *window) {
     VkSwapchainCreateInfoKHR swapchain_create_info{};
-    // SwapchainSupportDetails swapchain_details;
-
-    // swapchain.swapchain = VK_NULL_HANDLE; // Initialize swapchain handle to null
-    // swapchain.format = {};
-    // swapchain.present_mode =
-    //     VK_PRESENT_MODE_FIFO_KHR; // Default to FIFO present mode
 
     VkSurfaceCapabilitiesKHR capabilities;
     VkSurfaceFormatKHR *formats = nullptr;
@@ -615,7 +609,102 @@ RenderingDevice::RenderingDevice(const ApplicationInfo &info) {
     }
 }
 
+RenderingDevice::RenderingDevice(RenderingDevice &&other) {
+    instance = other.instance;
+    #ifdef ALCHEMIST_DEBUG
+    messenger = other.messenger;
+    #endif
+    physical_device = other.physical_device;
+    graphics_queue_family_index = other.graphics_queue_family_index;
+    compute_queue_family_index = other.compute_queue_family_index;
+    transfer_queue_family_index = other.transfer_queue_family_index;
+    present_queue_family_index = other.present_queue_family_index;
+    device = other.device;
+    depth_format = other.depth_format;
+    surface = other.surface;
+    swapchain = other.swapchain;
+    surface_format = other.surface_format;
+    present_mode = other.present_mode;
+    swapchain_extent = other.swapchain_extent;
+    swapchain_image_count = other.swapchain_image_count;
+
+    swapchain_images = other.swapchain_images;
+    swapchain_image_views = other.swapchain_image_views;
+
+    // Reset the moved-from object
+    other.instance = VK_NULL_HANDLE;
+    #ifdef ALCHEMIST_DEBUG
+    other.messenger = VK_NULL_HANDLE;
+    #endif
+    other.physical_device = VK_NULL_HANDLE;
+    other.graphics_queue_family_index = UINT32_MAX;
+    other.compute_queue_family_index = UINT32_MAX;
+    other.transfer_queue_family_index = UINT32_MAX;
+    other.present_queue_family_index = UINT32_MAX;
+    other.device = VK_NULL_HANDLE;
+    other.depth_format = VK_FORMAT_UNDEFINED;
+    other.surface = VK_NULL_HANDLE;
+    other.swapchain = VK_NULL_HANDLE;
+    other.surface_format = {};
+    other.present_mode = VK_PRESENT_MODE_FIFO_KHR; // Default to FIFO present mode
+    other.swapchain_extent.width = 0;
+    other.swapchain_extent.height = 0;
+    
+    swapchain_images = nullptr; // Reset to nullptr after move
+}
+
+RenderingDevice &RenderingDevice::operator=(RenderingDevice &&other) {
+    if (this != &other) {
+        // Move resources from other
+        instance = other.instance;
+        #ifdef ALCHEMIST_DEBUG
+        messenger = other.messenger;
+        #endif
+        physical_device = other.physical_device;
+        graphics_queue_family_index = other.graphics_queue_family_index;
+        compute_queue_family_index = other.compute_queue_family_index;
+        transfer_queue_family_index = other.transfer_queue_family_index;
+        present_queue_family_index = other.present_queue_family_index;
+        device = other.device;
+        depth_format = other.depth_format;
+        surface = other.surface;
+        swapchain = other.swapchain;
+        surface_format = other.surface_format;
+        present_mode = other.present_mode;
+        swapchain_extent = other.swapchain_extent;
+        swapchain_image_count = other.swapchain_image_count;
+
+        swapchain_images = other.swapchain_images;
+        swapchain_image_views = other.swapchain_image_views;
+
+        // Reset the moved-from object
+        other.instance = VK_NULL_HANDLE;
+        #ifdef ALCHEMIST_DEBUG
+        other.messenger = VK_NULL_HANDLE;
+        #endif
+        other.physical_device = VK_NULL_HANDLE;
+        other.graphics_queue_family_index = UINT32_MAX;
+        other.compute_queue_family_index = UINT32_MAX;
+        other.transfer_queue_family_index = UINT32_MAX;
+        other.present_queue_family_index = UINT32_MAX;
+        other.device = VK_NULL_HANDLE;
+        other.depth_format = VK_FORMAT_UNDEFINED;
+        other.surface = VK_NULL_HANDLE;
+        other.swapchain = VK_NULL_HANDLE;
+        other.surface_format = {};
+        other.present_mode = VK_PRESENT_MODE_FIFO_KHR; // Default to FIFO present mode
+        other.swapchain_extent.width = 0;
+        other.swapchain_extent.height = 0;
+
+    }
+    return *this; // Return the current object
+}
+
 RenderingDevice::~RenderingDevice() {
+    if (device == VK_NULL_HANDLE) {
+        return; // Device is already destroyed
+    }
+
     for (uint32_t i = 0; i < swapchain_image_count; i++) {
         vkDestroyImageView(device, swapchain_image_views[i], nullptr);
     }

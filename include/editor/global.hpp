@@ -20,6 +20,8 @@ struct Global {
 
     RenderingDevice rendering_device; // Pointer to the rendering device
 
+    uint32_t flight_frame = 0;
+
     std::vector<CommandBuffer> command_buffers;
     std::vector<Fence> fences;
     std::vector<Semaphore> image_semaphores;
@@ -30,8 +32,14 @@ struct Global {
     RID render_pass;
     RID gui_render_pass;
 
-    RID pipeline_layout;
-    RID pipeline;
+    RID desc_pool;
+    RID desc_layout;
+    RID desc;
+
+    RID vert;
+    RID frag;
+    RID gizmo_pipeline_lyt;
+    RID gizmo_pipeline;
 
     RID graphic_queue;
     RID present_queue;
@@ -40,14 +48,15 @@ struct Global {
     RID depth_memory;
     RID depth_view;
 
-    RID framebuffer;
+    std::vector<RID> framebuffer;
 
     Global() = default;
     void init(const ApplicationInfo &info);
+    ~Global();
 
     static Global &instance();
 
-    static std::unique_ptr<Global> current_scene;
+    static std::unique_ptr<Global> __instance;
 };
 
 #endif // ALCHEMIST_EDITOR_GLOBAL_HPP

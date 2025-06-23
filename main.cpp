@@ -58,6 +58,8 @@
 #include "editor/server.hpp"
 #include "editor/scene_manager.hpp"
 
+#include "scenes/default_scene.hpp"
+
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
@@ -160,156 +162,12 @@ int main() {
         QueueFamilyPreferences::QUEUE_FAMILY_PREFERENCES_SEPARATE
     };
 
-    EditorServer &editor_server = EditorServer::instance();
-    editor_server.emplace_server<RIDServer>();
-    
-    RenderingDevice rendering_device(info);
-    auto &server = editor_server.emplace_server<GpuMemoryServer>(rendering_device.device, rendering_device.physical_device);
-    auto &pass_server = editor_server.emplace_server<RenderPassServer>(rendering_device.device);
-    auto &image_server = editor_server.emplace_server<ImageServer>(rendering_device.device, rendering_device.physical_device);
-    auto &image_view_server = editor_server.emplace_server<ImageViewServer>(rendering_device.device);
-    auto &sampler_server = editor_server.emplace_server<SamplerServer>(rendering_device.device);
-    auto &buffer_server = editor_server.emplace_server<BufferServer>(rendering_device.device, rendering_device.physical_device);
-    auto &mesh_server = editor_server.emplace_server<MeshServer>(rendering_device.device, rendering_device.physical_device);
-    auto &command_pool_server = editor_server.emplace_server<CommandPoolServer>(rendering_device.device);
-    auto &queue_server = editor_server.emplace_server<QueueServer>(rendering_device.device);
-    auto &descriptor_server = editor_server.emplace_server<DescriptorServer>(rendering_device.device);
-    auto &descriptor_layout_server = editor_server.emplace_server<DescriptorLayoutServer>(rendering_device.device);
-    auto &descriptor_pool_server = editor_server.emplace_server<DescriptorPoolServer>(rendering_device.device);
-    auto &pipeline_server = editor_server.emplace_server<PipelineServer>(rendering_device.device);
-    auto &shader_server = editor_server.emplace_server<ShaderServer>(rendering_device.device);
-    auto &pipeline_layout_server = editor_server.emplace_server<PipelineLayoutServer>(rendering_device.device);
-    auto &framebuffer_server = editor_server.emplace_server<FramebufferServer>(rendering_device.device);
-
+    Global &global = Global::instance();
+    global.init(info);
     SceneManager manager;
 
-    // auto &rid_sever = new_rid_server();
-    // auto &atlas = new_rid_atlas();
-
-    // auto &device = new_rendering_device(info);
-    // auto &server = new_gpu_memory_server(device.device, device.physical_device);
-    // auto &image_server = new_image_server(device);
-
-    // RID rid = load_image("../assets/textures/oh.png");
-    VkMemoryRequirements requirements;
-    // image_server.get_requirements(rid, requirements);
-    // RID block = server.allocate_block<VkImage>(
-    //     requirements.size,
-    //     VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-    //     find_memory_type(
-    //         rendering_device.physical_device,
-    //         requirements.memoryTypeBits,
-    //         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-    //     )
-    // );
-
-    // image_server.bind_image(rid, block);
-    
-    vec3 a[] = {
-        vec3(0.0f, 0.0f, 0.0f),
-        vec3(1.0f, 0.0f, 0.0f),
-        vec3(0.0f, 1.0f, 0.0f),
-        vec3(1.0f, 1.0f, 0.0f)
-    };
-    RID mesh = mesh_server.new_mesh().add_data(a, 4).build();
-    mesh_server.get_requirements(mesh, requirements);
-    RID mesh_memory = server.allocate_block<VkBuffer>(
-        requirements.size,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        find_memory_type(
-            rendering_device.physical_device,
-            requirements.memoryTypeBits,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        )
-    );
-    mesh_server.bind_mesh(mesh, mesh_memory);
-
-    // uint8_t indices[] = {0, 1, 2, 3};
-    // auto &mesh_server = new_mesh_server(device);
-    // mesh_server.add_table<vec3>();
-    // auto builder = mesh_server.mesh();
-    // builder.add_data(
-    //     a,
-    //     4
-    // );
-    // std::cout << "Uploading mesh data to GPU..." << std::endl;
-    // builder.add_indices<uint8_t>(
-    //     indices, 4
-    // );
-    // std::cout << "Uploading mesh data to GPU..." << std::endl;
-    // Mesh mesh = builder.build();
-
-    // VkCommandPool command_pool;
-    // VkCommandPoolCreateInfo pool_info;
-    // pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    // pool_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    // pool_info.queueFamilyIndex = device.graphics_queue_family_index;
-    // pool_info.pNext = nullptr;
-    // if (vkCreateCommandPool(device.device, &pool_info, nullptr, &command_pool) != VK_SUCCESS) {
-    //     return 1;
-    // }
-
-    RID cmd_pool = command_pool_server.new_command_pool().set_queue_family_index(
-        rendering_device.graphics_queue_family_index
-    ).set_flags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT).build();
-    CommandBuffer buffer = allocate_command_buffer(
-        VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        cmd_pool
-    );
-    RID queue = queue_server.new_queue(rendering_device.graphics_queue_family_index);
-
-    buffer.begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-    buffer_server.execute_commands(buffer.buffer);
-
-    buffer.end();
-
-    Submit submit = queue_server.submit(queue).add_command_buffer(buffer).submit();
-    submit.wait();
-
-    buffer_server.clear_commands();
-
-    RID desc_pool = descriptor_pool_server.new_descriptor_pool().add_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 2).build();
-    auto builder = descriptor_layout_server.new_descriptor_layout();
-    builder.add_binding()
-        .set_binding(0)
-        .set_stage_flags(VK_SHADER_STAGE_VERTEX_BIT)
-        .set_descriptor_type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-        .set_descriptor_count(1);
-    builder.add_binding()
-        .set_binding(1)
-        .set_stage_flags(VK_SHADER_STAGE_VERTEX_BIT)
-        .set_descriptor_type(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-        .set_descriptor_count(1);
-    RID desc_layout = builder.build();
-    RID desc = descriptor_server.new_descriptor(desc_pool, desc_layout);
-
-    RID vert = shader_server.from_file("../assets/shaders/line.vert.spv");
-    RID frag = shader_server.from_file("../assets/shaders/line.frag.spv");
-
-    RID render_pass = default_render_pass(rendering_device.surface_format.format, rendering_device.depth_format);
-
-    RID pipe_layout = PipelineLayoutServer::instance().new_pipeline_layout().add_layout(desc_layout).build();
-    auto pipeline_builder = PipelineServer::instance().new_simple_pipeline();
-    pipeline_builder.add_shader(vert, VK_SHADER_STAGE_VERTEX_BIT);
-    pipeline_builder.add_shader(frag, VK_SHADER_STAGE_FRAGMENT_BIT);
-    pipeline_builder.set_vertex_input()
-        .add_binding<vec3>(0)
-        .add_attribute<vec3>(0, 0, 0)
-        .build();
-    pipeline_builder.set_input_assembly(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)
-        .set_depth_stencil()
-            .set_depth_test_enable(VK_TRUE)
-            .set_depth_write_enable(VK_TRUE)
-            .set_depth_compare_op(VK_COMPARE_OP_LESS)
-            .set_depth_bounds_test_enable(VK_FALSE)
-            .set_stencil_test_enable(VK_FALSE);
-    RID pipeline = pipeline_builder.set_layout(pipe_layout).set_render_pass(render_pass).build();
-
-    #ifdef ALCHEMIST_DEBUG
-    imgui_render_pass(rendering_device.surface_format.format);
-    #endif // ALCHEMIST_DEBUG
-
+    manager.add_scene<DefaultScene>("DefaultScene");
+    manager.set_current_scene("DefaultScene");
 
     // VkFramebuffer framebuffer = FramebufferBuilder(device.swapchain_extent).add_attachment(
     //     device.swapchain_image_views[0]
@@ -625,6 +483,7 @@ int main() {
         double delta = current_time - last_time;
 
         manager.update(delta);
+        manager.render();
         // manager.render();
 
     //     begin_draw(renderer, base.device, base.swapchain.swapchain,
@@ -718,6 +577,7 @@ int main() {
     //     renderer.current_frame = (renderer.current_frame + 1) % 2;
     }
 
+    QueueServer::instance().get_queue(global.present_queue).wait();
     FramebufferServer::__instance.reset();
     PipelineServer::__instance.reset();
     PipelineLayoutServer::__instance.reset();
@@ -729,11 +589,15 @@ int main() {
     CommandPoolServer::__instance.reset();
     QueueServer::__instance.reset();
     BufferServer::__instance.reset();
+    SamplerServer::__instance.reset();
+    ImageViewServer::__instance.reset();
     ImageServer::__instance.reset();
     RenderPassServer::__instance.reset();
     GpuMemoryServer::__instance.reset();
     RIDServer::__instance.reset();
     EditorServer::__instance.reset();
+
+    Global::__instance.reset();
 
     glfwDestroyWindow(window);
     glfwTerminate();

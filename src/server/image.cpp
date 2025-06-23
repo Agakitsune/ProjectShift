@@ -191,6 +191,7 @@ RID ImageViewBuilder::build() const {
 SamplerBuilder::SamplerBuilder(SamplerServer &server) : server(server) {
     create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    create_info.flags = 0; // Default flags, can be set later
     create_info.magFilter = VK_FILTER_LINEAR; // Default mag filter
     create_info.minFilter = VK_FILTER_LINEAR; // Default min filter
     create_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT; // Default address mode U
@@ -512,19 +513,7 @@ ImageServer::~ImageServer() {
 
 RID ImageServer::new_image(const VkImageCreateInfo &create_info) {
     VkImage image;
-    VkDeviceSize size = create_info.extent.width * create_info.extent.height;
     RID rid = RIDServer::instance().new_id(RIDServer::IMAGE);
-
-    if (create_info.format == VK_FORMAT_R8G8B8_UNORM) {
-        size *= 3;
-    } else if (create_info.format == VK_FORMAT_R8G8B8A8_UNORM) {
-        size *= 4;
-    } else {
-        #ifdef ALCHEMIST_DEBUG
-        std::cerr << "Unsupported image format!" << std::endl;
-        #endif
-        return RID_INVALID;
-    }
 
     if (vkCreateImage(device, &create_info, nullptr, &image) != VK_SUCCESS) {
     #ifdef ALCHEMIST_DEBUG
@@ -532,19 +521,6 @@ RID ImageServer::new_image(const VkImageCreateInfo &create_info) {
     #endif
         return RID_INVALID;
     }
-
-    // VkMemoryRequirements mem_requirements;
-    // vkGetImageMemoryRequirements(device, image, &mem_requirements);
-
-    // RID bind_rid = GpuMemoryServer::instance().bind(device, memory, mem_requirements, image);
-
-    // if (bind_rid == RID_INVALID) {
-    //     vkDestroyImage(device, image, nullptr); // Clean up the image if binding fails
-    //     #ifdef ALCHEMIST_DEBUG
-    //     std::cerr << "Failed to bind image memory!" << std::endl;
-    //     #endif
-    //     return RID_INVALID; // Return 0 if the binding fails
-    // }
 
     images.emplace_back(image, rid, 0); // Add the created image to the images vector
 
@@ -759,11 +735,12 @@ ImageViewServer::ImageViewServer(VkDevice device) : device(device) {
     // Initialize the ImageViewServer with the Vulkan device
 }
 ImageViewServer::~ImageViewServer() {
-    #ifdef ALCHEMIST_DEBUG
     for (const auto &view : image_views) {
+        #ifdef ALCHEMIST_DEBUG
         std::cout << "Destroying image view with RID: " << view.rid << std::endl;
+        #endif
+        vkDestroyImageView(device, view.view, nullptr); // Clean up each image view
     }
-    #endif
 }
 
 RID ImageViewServer::new_image_view(const VkImageViewCreateInfo &create_info) {

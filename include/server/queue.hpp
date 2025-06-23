@@ -14,6 +14,7 @@ struct Submit {
     VkQueue queue;
     std::vector<VkCommandBuffer> command_buffers; // Vector to hold command buffers
     std::vector<VkSemaphore> wait_semaphores; // Optional wait semaphores
+    std::vector<VkPipelineStageFlags> wait_stages; // Optional wait stages
     std::vector<VkSemaphore> signal_semaphores; // Optional signal semaphores
 
     Submit(VkQueue queue);
@@ -28,12 +29,13 @@ struct SubmitBuilder {
     VkQueue queue;
     std::vector<VkCommandBuffer> command_buffers; // Vector to hold command buffers
     std::vector<VkSemaphore> wait_semaphores; // Optional wait semaphores
+    std::vector<VkPipelineStageFlags> wait_stages; // Optional wait stages
     std::vector<VkSemaphore> signal_semaphores; // Optional signal semaphores
 
     SubmitBuilder(VkQueue queue);
 
     SubmitBuilder &add_command_buffer(const CommandBuffer &buffer);
-    SubmitBuilder &add_wait_semaphore(VkSemaphore semaphore);
+    SubmitBuilder &add_wait_semaphore(VkSemaphore semaphore, VkPipelineStageFlags stage);
     SubmitBuilder &add_signal_semaphore(VkSemaphore semaphore);
 
     Submit submit(VkFence fence = VK_NULL_HANDLE);
@@ -46,6 +48,7 @@ struct Queue {
     Queue() = default;
 
     SubmitBuilder submit() const;
+    void wait() const;
 };
 
 struct QueueServer {
