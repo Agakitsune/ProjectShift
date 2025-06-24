@@ -4,6 +4,7 @@
 
 #include "math/matrix/mat4.hpp"
 #include "math/vector/vec3.hpp"
+#include "math/angle.hpp"
 
 static mat4 translate(const vec3 &translation) {
     mat4 result;
@@ -33,7 +34,7 @@ static mat4 euler(const vec3 &euler) {
 }
 
 static mat4 euler_deg(const vec3 &deg) {
-    return euler(deg * (M_PI / 180.0f));
+    return euler(deg * (PI / 180.0f));
 }
 
 static mat4 scale(const vec3 &scale) {

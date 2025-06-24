@@ -29,7 +29,11 @@ FetchContent_Declare(
 
 set(OPTION_BUILD_EXAMPLES OFF)
 
-FetchContent_MakeAvailable(glfw3 imgui)
+FetchContent_MakeAvailable(glfw3)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    FetchContent_MakeAvailable(imgui)
+endif()
 
 find_package(Vulkan REQUIRED)
 
@@ -49,7 +53,14 @@ file(GLOB_RECURSE SOURCES
     "./src/*.c"
 )
 
-file(GLOB IMGUI_SOURCES "${imgui_SOURCE_DIR}/*cpp")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    file(GLOB IMGUI_SOURCES "${imgui_SOURCE_DIR}/*cpp")
+
+    list(APPEND IMGUI_SOURCES
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    )
+endif()
 
 add_executable(${PROJECT_NAME}
     main.cpp
@@ -57,9 +68,6 @@ add_executable(${PROJECT_NAME}
     ${SOURCES}
 
     ${IMGUI_SOURCES}
-
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
 )
 
 # add compile option if cmake is run in debug mode
@@ -71,6 +79,8 @@ else()
     target_compile_definitions(${PROJECT_NAME} PRIVATE ALCHEMIST_RELEASE)
 endif()
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE ALCHEMIST_ROOT="${CMAKE_CURRENT_SOURCE_DIR}")
+
 target_compile_options(${PROJECT_NAME} PRIVATE
     -g
     # -fsanitize=address
@@ -80,8 +90,10 @@ target_compile_options(${PROJECT_NAME} PRIVATE
 # target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${glfw3_SOURCE_DIR}/include)
-target_include_directories(${PROJECT_NAME} PRIVATE ${imgui_SOURCE_DIR})
-target_include_directories(${PROJECT_NAME} PRIVATE ${imgui_SOURCE_DIR}/backends)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_include_directories(${PROJECT_NAME} PRIVATE ${imgui_SOURCE_DIR})
+    target_include_directories(${PROJECT_NAME} PRIVATE ${imgui_SOURCE_DIR}/backends)
+endif()
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw Vulkan::Vulkan)

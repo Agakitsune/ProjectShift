@@ -2,6 +2,12 @@
 #ifndef ALCHEMIST_EDITOR_SCENE_MANAGER_HPP
 #define ALCHEMIST_EDITOR_SCENE_MANAGER_HPP
 
+#ifdef ALCHEMIST_DEBUG
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan.h"
+#endif
+
 #include <unordered_map>
 #include <memory>
 
@@ -104,8 +110,42 @@ struct SceneManager {
 
         global.command_buffers[global.flight_frame].end(); // End the command buffer recording
 
+        #ifdef ALCHEMIST_DEBUG
+
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        std::cout << "Rendering ImGui for the current scene." << std::endl;
+        
+        imgui();
+        
+        ImGui::Render();
+
+        ImDrawData* main_draw_data = ImGui::GetDrawData();
+        const bool main_is_minimized = (main_draw_data->DisplaySize.x <= 0.0f || main_draw_data->DisplaySize.y <= 0.0f);
+
+        global.gui_command_buffers[image_index].begin(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+        const RenderPass &imgui_render_pass = RenderPassServer::instance().get_render_pass(global.gui_render_pass);
+        auto render_pass = imgui_render_pass.begin(global.gui_command_buffers[image_index].buffer);
+        render_pass
+            .set_framebuffer(global.gui_framebuffer[image_index])
+            .set_render_offset({0, 0})
+            .set_render_size(global.rendering_device.swapchain_extent)
+            .add_clear_color(BLACK)
+            .begin(); // Clear color
+
+        ImGui_ImplVulkan_RenderDrawData(main_draw_data, global.gui_command_buffers[image_index].buffer);
+
+        render_pass.end(); // End the render pass
+        global.gui_command_buffers[image_index].end(); // End the command buffer recording
+
+        #endif // ALCHEMIST_DEBUG
+
         graphic_queue.submit()
             .add_command_buffer(global.command_buffers[global.flight_frame])
+            .add_command_buffer(global.gui_command_buffers[image_index]) // Submit ImGui command buffer
             .add_wait_semaphore(global.image_semaphores[global.flight_frame].semaphore, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT)
             .add_signal_semaphore(global.render_semaphores[global.flight_frame].semaphore)
             .submit(global.fences[global.flight_frame].fence);
@@ -131,6 +171,17 @@ struct SceneManager {
         if (current_scene) {
             current_scene->imgui(); // Render ImGui for the current scene
         }
+    }
+
+    void wait() {
+        Global &global = Global::instance();
+        #ifdef ALCHEMIST_DEBUG
+        std::cout << "Waiting for all fences to be signaled." << std::endl;
+        #endif // ALCHEMIST_DEBUG
+        for (auto &fence : global.fences) {
+            fence.wait(); // Wait for all fences to be signaled
+        }
+        vkDeviceWaitIdle(global.rendering_device.device); // Wait for the device to be idle
     }
 };
 

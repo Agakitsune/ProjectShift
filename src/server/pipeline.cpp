@@ -600,6 +600,18 @@ VertexInput SimplePipelineBuilder::set_vertex_input() {
     return vertex_input; // Return the vertex input builder for further configuration
 }
 
+SimplePipelineBuilder &SimplePipelineBuilder::cull_mode(VkCullModeFlags mode) {
+    if (create_info.pRasterizationState == nullptr) {
+        #ifdef ALCHEMIST_DEBUG
+        std::cerr << "Rasterization state must be set before setting cull mode!" << std::endl;
+        #endif
+        return *this; // If rasterization state is not set, do not change cull mode
+    }
+    VkPipelineRasterizationStateCreateInfo *rasterization_state = const_cast<VkPipelineRasterizationStateCreateInfo *>(create_info.pRasterizationState); // Get the rasterization state from the pipeline create info
+    rasterization_state->cullMode = mode; // Set the cull mode in the rasterization state
+    return *this; // Return the current instance for method chaining
+}
+
 SimplePipelineBuilder &SimplePipelineBuilder::set_input_assembly(VkPrimitiveTopology topology, VkBool32 primitive_restart) {
     VkPipelineInputAssemblyStateCreateInfo *input_assembly = new VkPipelineInputAssemblyStateCreateInfo; // Allocate memory for input assembly state
     std::memset(input_assembly, 0, sizeof(VkPipelineInputAssemblyStateCreateInfo));

@@ -17,12 +17,10 @@ RID RIDServer::new_id(RID type) {
         RID rid = stack[type].top();
         stack[type].pop(); // Remove the ID from the free list
         in_stack[type].erase(rid); // Remove the ID from the set of used RIDs
-        std::cout << "Reusing RID: " << rid << " for type: " << type << std::endl; // Debug output
         return rid; // Return the top ID from the free list
     } else {
         RID id = next[type];
         next[type]++;
-        std::cout << "New RID allocated: " << id << " for type: " << type << std::endl; // Debug output
         return id;
     }
 }

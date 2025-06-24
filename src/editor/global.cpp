@@ -1,6 +1,10 @@
 
 #ifdef ALCHEMIST_DEBUG
 #include <iostream> // Include iostream for debug output
+
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan.h"
 #endif
 
 #include "editor/global.hpp"
@@ -23,6 +27,19 @@
 #include "vulkan/sync.hpp" // Include the RID type definition
 
 #include "memory/misc.hpp" // Include the RID type definition
+
+#ifndef ALCHEMIST_ROOT
+#define ALCHEMIST_ROOT "" // Define the root path if not defined
+#endif
+
+static void check_imgui_vulkan(VkResult result) {
+    if (result != VK_SUCCESS) {
+        #ifdef ALCHEMIST_DEBUG
+        std::cerr << "ImGui Vulkan error: " << result << std::endl;
+        #endif
+        throw std::runtime_error("ImGui Vulkan initialization failed");
+    }
+}
 
 void Global::init(const ApplicationInfo &info) {
     window = info.window; // Set the GLFW window pointer
@@ -49,11 +66,13 @@ void Global::init(const ApplicationInfo &info) {
     editor_server.emplace_server<FramebufferServer>(rendering_device.device);
 
     command_buffers.reserve(2);
+    gui_command_buffers.reserve(rendering_device.swapchain_image_count);
     fences.reserve(2);
     image_semaphores.reserve(2);
     render_semaphores.reserve(2);
     
     framebuffer.resize(rendering_device.swapchain_image_count);
+    gui_framebuffer.resize(rendering_device.swapchain_image_count);
 
     graphic_queue = QueueServer::instance().new_queue(
         rendering_device.graphics_queue_family_index, 0
@@ -107,14 +126,35 @@ void Global::init(const ApplicationInfo &info) {
         .set_descriptor_count(1);
     desc_layout = builder.build();
     desc = DescriptorServer::instance().new_descriptor(desc_pool, desc_layout);
+
+    gui_desc_pool = DescriptorPoolServer::instance().new_descriptor_pool()
+        .add_pool_size(VK_DESCRIPTOR_TYPE_SAMPLER, 1000)
+        .add_pool_size(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000)
+        .add_pool_size(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000)
+        .add_pool_size(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000)
+        .add_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000)
+        .add_pool_size(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000)
+        .add_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000)
+        .add_pool_size(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000)
+        .add_pool_size(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000)
+        .add_pool_size(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000)
+        .add_pool_size(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000)
+        .build();
     
-    vert = ShaderServer::instance().from_file("../assets/shaders/line.vert.spv");
-    frag = ShaderServer::instance().from_file("../assets/shaders/line.frag.spv");
+    vert = ShaderServer::instance().from_file(ALCHEMIST_ROOT "/assets/shaders/line.vert.spv");
+    frag = ShaderServer::instance().from_file(ALCHEMIST_ROOT "/assets/shaders/line.frag.spv");
+    cube_vert = ShaderServer::instance().from_file(ALCHEMIST_ROOT "/assets/shaders/cube.vert.spv");
+    cube_frag = ShaderServer::instance().from_file(ALCHEMIST_ROOT "/assets/shaders/cube.frag.spv");
 
     gizmo_pipeline_lyt = PipelineLayoutServer::instance().new_pipeline_layout().add_layout(desc_layout).build();
 
     render_pass = default_render_pass(rendering_device.surface_format.format, rendering_device.depth_format);
+
+    #ifdef ALCHEMIST_DEBUG
+    gui_render_pass = imgui_render_pass(rendering_device.surface_format.format);
+    #endif
     
+    {
     auto pipeline_builder = PipelineServer::instance().new_simple_pipeline();
     pipeline_builder.add_shader(vert, VK_SHADER_STAGE_VERTEX_BIT);
     pipeline_builder.add_shader(frag, VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -122,7 +162,7 @@ void Global::init(const ApplicationInfo &info) {
         .add_binding<vec3>(0)
         .add_binding<vec3>(1)
         .add_attribute<vec3>(0, 0, 0)
-        .add_attribute<vec3>(1, 0, 0)
+        .add_attribute<vec3>(1, 1, 0)
         .build();
     pipeline_builder.set_input_assembly(VK_PRIMITIVE_TOPOLOGY_LINE_LIST)
         .set_depth_stencil()
@@ -132,6 +172,28 @@ void Global::init(const ApplicationInfo &info) {
             .set_depth_bounds_test_enable(VK_FALSE)
             .set_stencil_test_enable(VK_FALSE);
     gizmo_pipeline = pipeline_builder.set_layout(gizmo_pipeline_lyt).set_render_pass(render_pass).build();
+    }
+
+    {
+    auto pipeline_builder = PipelineServer::instance().new_simple_pipeline();
+    pipeline_builder.add_shader(cube_vert, VK_SHADER_STAGE_VERTEX_BIT);
+    pipeline_builder.add_shader(cube_frag, VK_SHADER_STAGE_FRAGMENT_BIT);
+    pipeline_builder.set_vertex_input()
+        .add_binding<vec3>(0)
+        .add_binding<vec3>(1)
+        .add_attribute<vec3>(0, 0, 0)
+        .add_attribute<vec3>(1, 1, 0)
+        .build();
+    pipeline_builder.cull_mode(VK_CULL_MODE_NONE);
+    pipeline_builder.set_input_assembly(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)
+        .set_depth_stencil()
+            .set_depth_test_enable(VK_TRUE)
+            .set_depth_write_enable(VK_TRUE)
+            .set_depth_compare_op(VK_COMPARE_OP_LESS)
+            .set_depth_bounds_test_enable(VK_FALSE)
+            .set_stencil_test_enable(VK_FALSE);
+    cube_pipeline = pipeline_builder.set_layout(gizmo_pipeline_lyt).set_render_pass(render_pass).build();
+    }
 
     for (uint32_t i = 0; i < rendering_device.swapchain_image_count; ++i) {
         framebuffer[i] = FramebufferServer::instance().new_framebuffer(
@@ -145,12 +207,29 @@ void Global::init(const ApplicationInfo &info) {
             .build();
     }
 
-    RID command_pool = CommandPoolServer::instance().new_command_pool()
+    for (uint32_t i = 0; i < rendering_device.swapchain_image_count; ++i) {
+        gui_framebuffer[i] = FramebufferServer::instance().new_framebuffer(
+                rendering_device.swapchain_extent.width,
+                rendering_device.swapchain_extent.height,
+                1
+            )
+            .set_render_pass(gui_render_pass)
+            .add_attachment(rendering_device.swapchain_image_views[i])
+            .build();
+    }
+
+    command_pool = CommandPoolServer::instance().new_command_pool()
+        .set_flags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT)
+        .set_queue_family_index(rendering_device.graphics_queue_family_index)
+        .build();
+    
+    gui_command_pool = CommandPoolServer::instance().new_command_pool()
         .set_flags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT)
         .set_queue_family_index(rendering_device.graphics_queue_family_index)
         .build();
     
     emplace_command_buffer(command_buffers, 2, command_pool); // Allocate command buffers
+    emplace_command_buffer(gui_command_buffers, rendering_device.swapchain_image_count, gui_command_pool); // Allocate command buffers
     SemaphoreBuilder(rendering_device.device)
         .emplace(image_semaphores, 2); // Create image semaphores
     SemaphoreBuilder(rendering_device.device)
@@ -161,6 +240,32 @@ void Global::init(const ApplicationInfo &info) {
 
     #ifdef ALCHEMIST_DEBUG
     std::cout << "Global initialized with window: " << window << std::endl;
+
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGuiIO &io = ImGui::GetIO();
+    ImGui_ImplGlfw_InitForVulkan(window, true);
+
+    const Queue &graphics_queue = QueueServer::instance().get_queue(graphic_queue);
+    const RenderPass &imgui_render_pass = RenderPassServer::instance().get_render_pass(gui_render_pass);
+    const DescriptorPool &imgui_descriptor_pool = DescriptorPoolServer::instance().get_descriptor_pool(gui_desc_pool);
+
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = rendering_device.instance;
+    init_info.PhysicalDevice = rendering_device.physical_device;
+    init_info.Device = rendering_device.device;
+    init_info.QueueFamily = rendering_device.graphics_queue_family_index;
+    init_info.Queue = graphics_queue.queue;
+    init_info.PipelineCache = VK_NULL_HANDLE;
+    init_info.DescriptorPool = imgui_descriptor_pool.pool;
+    init_info.Allocator = nullptr;
+    init_info.MinImageCount = rendering_device.swapchain_image_count;
+    init_info.ImageCount = rendering_device.swapchain_image_count;
+    init_info.CheckVkResultFn = check_imgui_vulkan;
+    init_info.RenderPass = imgui_render_pass.render_pass;
+    ImGui_ImplVulkan_Init(&init_info);
+
+    ImGui_ImplVulkan_CreateFontsTexture();
     #endif
 }
 

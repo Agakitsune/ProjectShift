@@ -5,19 +5,25 @@ layout(location = 1) in vec3 normal;
 
 layout(location = 0) out vec3 fragNormal;
 
-layout(binding = 0) uniform UniformBufferObject {
-    mat4 model;
+layout(set = 0, binding = 0) uniform Matrix {
     mat4 view;
     mat4 proj;
-} ubo;
+} matrix;
 
-layout(push_constant) uniform PushConstants {
-    mat4 model;
-    mat4 view_proj;
-} pc;
+layout(set = 0, binding = 1) uniform Data {
+    vec4 quaternion;
+    vec3 root;
+    float size;
+} data;
+
+vec3 rotate(vec3 v, vec4 q) {
+    vec3 uv = cross(q.xyz, v);
+    vec3 uuv = cross(q.xyz, uv);
+    return v + 2.0 * (uv * q.w + uuv);
+}
 
 void main() {
-    mat3 normalMatrix = mat3(transpose(inverse(pc.model)));
-    gl_Position = pc.view_proj * pc.model * vec4(position, 1.0);
-    fragNormal = normalize(normalMatrix * normal);
+    vec3 pos = rotate(position, data.quaternion) * data.size + data.root;
+    gl_Position = matrix.proj * matrix.view * vec4(pos, 1.0);
+    fragNormal = normalize(rotate(normal, data.quaternion) / data.size);
 }

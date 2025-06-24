@@ -40,6 +40,7 @@ struct CmdUploadBuffer {
     VkBufferCopy copy_region;
 
     CmdUploadBuffer() = default;
+    CmdUploadBuffer(CmdUploadBuffer &&);
     CmdUploadBuffer(VkBuffer buffer);
     ~CmdUploadBuffer();
 

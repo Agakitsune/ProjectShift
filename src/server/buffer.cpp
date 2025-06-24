@@ -67,10 +67,18 @@ Buffer::~Buffer() {
 
 
 
+CmdUploadBuffer::CmdUploadBuffer(CmdUploadBuffer &&other) : buffer(std::move(other.buffer)), staging(std::move(other.staging)), memory_rid(other.memory_rid), copy_region(other.copy_region) {
+    other.staging = VK_NULL_HANDLE; // Reset the staging buffer in the moved-from object
+    other.memory_rid = RID_INVALID; // Reset the memory RID in the moved-from object
+}
+
 CmdUploadBuffer::CmdUploadBuffer(VkBuffer buffer) : buffer(buffer), staging(VK_NULL_HANDLE), memory_rid(RID_INVALID) {}
 
 CmdUploadBuffer::~CmdUploadBuffer() {
-    vkDestroyBuffer(BufferServer::instance().device, staging, nullptr); // Clean up the staging buffer
+    if (staging != VK_NULL_HANDLE) {
+        vkDestroyBuffer(BufferServer::instance().device, staging, nullptr); // Clean up the staging buffer
+    }
+    // vkDestroyBuffer(BufferServer::instance().device, staging, nullptr); // Clean up the staging buffer
     if (memory_rid != RID_INVALID) {
         GpuMemoryServer::instance().free_block(memory_rid); // Free the memory block associated with the staging buffer
     }
@@ -269,7 +277,7 @@ CmdUploadBuffer &BufferServer::upload_buffer(RID rid) {
     CmdUploadBuffer cmd(buffer.buffer);
     upload_commands.emplace_back(std::move(cmd));
     command_types.emplace_back(BufferCommandType::UPLOAD);
-    
+
     return upload_commands.back(); // Return the last added command
 }
 

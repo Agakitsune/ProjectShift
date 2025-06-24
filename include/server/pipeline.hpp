@@ -201,6 +201,7 @@ struct SimplePipelineBuilder {
 
     ShaderBuilder add_shader(RID module, VkShaderStageFlagBits stage);
     VertexInput set_vertex_input();
+    SimplePipelineBuilder &cull_mode(VkCullModeFlags mode);
     SimplePipelineBuilder &set_input_assembly(VkPrimitiveTopology topology, VkBool32 primitive_restart = VK_FALSE);
     DepthStencilBuilder set_depth_stencil();
     SimplePipelineBuilder &set_layout(RID layout);

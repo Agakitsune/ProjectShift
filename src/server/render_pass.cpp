@@ -395,7 +395,11 @@ RID default_render_pass(VkFormat image_format, VkFormat depth_format) {
         .set_load_op(VK_ATTACHMENT_LOAD_OP_CLEAR)
         .set_store_op(VK_ATTACHMENT_STORE_OP_STORE)
         .set_initial_layout(VK_IMAGE_LAYOUT_UNDEFINED)
+    #ifdef ALCHEMIST_DEBUG
+        .set_final_layout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) // For rendering
+    #else
         .set_final_layout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) // For final presentation
+    #endif // ALCHEMIST_DEBUG
         .build();
     
     builder.new_attachment()
@@ -415,8 +419,15 @@ RID default_render_pass(VkFormat image_format, VkFormat depth_format) {
     builder.new_dependency()
         .set_src_subpass(VK_SUBPASS_EXTERNAL)
         .set_dst_subpass(0)
+
+    #ifdef ALCHEMIST_DEBUG
+        .set_src_stage_mask(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)
+        .set_src_access_mask(0)
+    #else
         .set_src_stage_mask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT)
         .set_src_access_mask(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
+    #endif // ALCHEMIST_DEBUG
+
         .set_dst_stage_mask(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT)
         .set_dst_access_mask(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)
         .build();

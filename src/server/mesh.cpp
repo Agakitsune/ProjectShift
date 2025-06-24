@@ -42,7 +42,6 @@ void Mesh::bind(VkCommandBuffer cmd_buffer) const {
     VkDeviceSize *offsets_ptr = new VkDeviceSize[count]; // Create an array for offsets
     for (uint32_t i = 0; i < count; ++i) {
         offsets_ptr[i] = this->offsets[i]; // Fill the offsets array
-        std::cout << "Offset for buffer " << i << ": " << offsets_ptr[i] << std::endl; // Debug output for offsets
     }
 
     vkCmdBindVertexBuffers(cmd_buffer, 0, count, buffers, offsets_ptr); // Bind the vertex buffers
@@ -73,8 +72,12 @@ RID MeshBuilder::build() const {
         #endif
         return RID_INVALID; // Return an invalid RID if creation fails
     }
+    VkBufferUsageFlagBits usage = (VkBufferUsageFlagBits)(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT); // Set the usage for the buffer
+    if (index_type != VK_INDEX_TYPE_MAX_ENUM) {
+        usage = (VkBufferUsageFlagBits)(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |  VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT); // If indices are present, also set the index buffer usage
+    }
     mesh.buffer = BufferServer::instance().new_buffer()
-        .set_usage(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+        .set_usage(usage)
         .set_size(size)
         .set_sharing_mode(VK_SHARING_MODE_EXCLUSIVE)
         .build(); // Create a new buffer for the mesh

@@ -60,9 +60,11 @@
 
 #include "scenes/default_scene.hpp"
 
+#ifdef ALCHEMIST_DEBUG
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
+#endif
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -101,7 +103,7 @@ void mouse_button_callback(GLFWwindow *window, int button, int action,
 
 void mouse_scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
     Global &global = Global::instance();
-    global.camera.zoom(static_cast<float>(yoffset) * 0.1f);
+    global.camera.zoom(static_cast<float>(yoffset) * -0.1f);
 }
 
 void cursor_position_callback(GLFWwindow *window, double xpos, double ypos) {
@@ -156,6 +158,10 @@ int main() {
         VK_MAKE_API_VERSION(0, 1, 0, 0),
         QueueFamilyPreferences::QUEUE_FAMILY_PREFERENCES_SEPARATE
     };
+
+    #ifdef ALCHEMIST_DEBUG
+    std::cout << "Initializing Project on: " << ALCHEMIST_ROOT << std::endl;
+    #endif // ALCHEMIST_DEBUG
 
     Global &global = Global::instance();
     global.init(info);
@@ -476,9 +482,18 @@ int main() {
 
         current_time = glfwGetTime();
         double delta = current_time - last_time;
+        last_time = current_time;
 
         manager.update(delta);
         manager.render();
+    }
+    manager.wait();
+
+    #ifdef ALCHEMIST_DEBUG
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+    #endif // ALCHEMIST_DEBUG
         // manager.render();
 
     //     begin_draw(renderer, base.device, base.swapchain.swapchain,
@@ -570,7 +585,6 @@ int main() {
     //     present_draw(renderer, present_queue, base.swapchain.swapchain,
     //                  image_index);
     //     renderer.current_frame = (renderer.current_frame + 1) % 2;
-    }
 
     QueueServer::instance().get_queue(global.present_queue).wait();
     FramebufferServer::__instance.reset();
@@ -583,11 +597,11 @@ int main() {
     MeshServer::__instance.reset();
     CommandPoolServer::__instance.reset();
     QueueServer::__instance.reset();
-    BufferServer::__instance.reset();
     SamplerServer::__instance.reset();
     ImageViewServer::__instance.reset();
     ImageServer::__instance.reset();
     RenderPassServer::__instance.reset();
+    BufferServer::__instance.reset();
     GpuMemoryServer::__instance.reset();
     RIDServer::__instance.reset();
     EditorServer::__instance.reset();
